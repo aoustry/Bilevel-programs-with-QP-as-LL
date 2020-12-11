@@ -12,16 +12,13 @@ n = f.n
 
 
 #Cost param 
-quadcostlevel = 0.1
+quadcostlevel = 0.01
 linear_cost1 = 0.1
 linear_cost2 = 0.1
 
-# Sample input data
-aux1 =np.random.rand(n,n)
-aux2 =np.random.rand(n,n)
-P1 = quadcostlevel*(aux1 + aux1.T)
-Q1 = P1.dot(P1.transpose())
-Q2 = quadcostlevel*(aux2 + aux2.T)
+# Input data
+Q1 = quadcostlevel*(4*np.eye(n,k=0) - np.eye(n,k=1)-np.eye(n,k=-1))
+Q2 = quadcostlevel*(np.eye(n,k=0) -np.eye(n,k=1)-np.eye(n,k=-1))
 q1 = linear_cost1*np.ones(n)
 q2 = linear_cost2*np.ones(n)
 
@@ -56,7 +53,8 @@ with Model("App1") as model:
     
     SOCvariable = model.variable(Domain.inQCone(n+1))
     SOCvariable_1n = SOCvariable.slice(1,n+1)
-    #t >= (SOC[0])**2 >= x^TQ_1x
+    ##t >= (SOC[0])**2 >= x^TQ_1x
+    P1 = sqrtm(Q1).T
     model.constraint(Expr.sub(SOCvariable_1n,Expr.mul(P1,x)),Domain.equalsTo(0.0))
     t = model.variable("t", 1, Domain.unbounded())
     model.constraint(Expr.hstack(0.5, t, SOCvariable.index(0)), Domain.inRotatedQCone())
@@ -69,7 +67,7 @@ with Model("App1") as model:
     
     #Constraints to define the several parts of the PSD matrix
     model.constraint(Expr.sub(Expr.add(0.5*Q2, Expr.mul(alpha,np.eye(n))), PSDVar_main),  Domain.equalsTo(0,n,n) )
-    model.constraint( Expr.sub(Expr.add(0.5*q2, Expr.add(Expr.mul(M.T,x),Expr.mul(lam,np.ones(n)))), PSDVar_vec),  Domain.equalsTo(0,n) )
+    model.constraint( Expr.sub(Expr.add(0.5*q2, Expr.add(Expr.mul(0.5*M.T,x),Expr.mul(lam,0.5*np.ones(n)))), PSDVar_vec),  Domain.equalsTo(0,n) )
     model.constraint( Expr.sub(Expr.add(beta, alpha), PSDVar_offset),  Domain.equalsTo(0) )
 
 
@@ -82,7 +80,7 @@ with Model("App1") as model:
     print("Objective value ={0}".format(v.level()))
     xres = x.level()
     tres = t.level()
-    assert(abs(tres-xres.dot(Q1).dot(xres))<=1E-6)
+    print(abs(tres-xres.dot(Q1).dot(xres)))
     print(xres.dot(Q1).dot(xres))
     print(x.level())
    
