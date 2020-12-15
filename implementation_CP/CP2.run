@@ -1,0 +1,54 @@
+reset;
+option randseed 0;
+
+model ./ourmodel2.mod;
+data ./inst2.dat;
+
+#display z;
+
+param iteration default 1;
+param maxit integer, default 1000;
+param contcuts default 0;
+param cuts default 0;
+
+option solver 'baron';
+#option baron_options "prfreq=100 outlev=1 maxtime = 100";
+
+problem relaxed:
+x, v, Q2, q2, obj_fun, simplex_x, matrix, vector, matrix_const, vector_const, cut;
+
+problem inner:
+y, obj_inner, simplex_y;
+
+let nc := 0;
+
+repeat{
+    printf "Iteration %s, solving current relaxation.\n", iteration;
+    printf "***********Solving Relaxed problem***********";
+    solve relaxed;
+    let {i in V, j in V} Q2_star[i,j] := Q2[i,j];
+    let {i in V} q2_star[i] := q2[i];
+    let {i in V} x_star[i] := x[i];
+
+    printf "++++++++++Solving Lower Level problem+++++++++++++";
+    solve inner;
+
+    if obj_inner  < -1e-6 - v + sum{i in V}(sum{j in V}(x[i]*x[j]*Q1[i,j]))+ sum{i in V}(q1[i]*x[i]) then
+    {
+        let nc := nc + 1; let {i in V} y_inner[nc,i] := y[i];  printf "Added a cut.\n"; let cuts := cuts +1;
+    }
+
+    if contcuts == cuts then
+    {
+        printf 'No cut has been added.\n';
+        break;
+    }
+    else {let contcuts := cuts;}
+
+    if iteration == maxit then break;
+    let iteration := iteration + 1;
+}
+
+display x, y, v, _time_to_solve, iteration;
+
+                                                                                                                      

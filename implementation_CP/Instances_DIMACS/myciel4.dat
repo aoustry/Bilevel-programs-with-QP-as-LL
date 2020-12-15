@@ -1,0 +1,98 @@
+### Graph based on Mycielski transformation. 
+### Triangle free (clique number 2) but increasing coloring number
+### Graph (23,71)
+
+param n:=23; 
+param quadcostlevel := 0.01;
+param linear_cost1 := 0.1;
+param linear_cost2 := 0.1;
+
+########Cost matrices and vectors##########
+
+for {i in V}
+    for{j in V}
+        {let Q1[i,j] := 0; let Q2[i,j] := 0;
+        if (i==j) then {let Q1[i,j]:=quadcostlevel*4; let Q2_fix[i,j]:= quadcostlevel;}
+        else {if(j==i+1 or j==i-1) then {let Q1[i,j]:=-quadcostlevel; let Q2_fix[i,j]:=-quadcostlevel;}}
+        }
+
+for {i in V}
+    {let q1[i] := linear_cost1; let q2_fix[i] := linear_cost2;}
+
+#######Adjacency matrix########
+
+for {i in V}
+    for{j in V}
+        let M[i,j] :=0;
+
+let M[1,2] :=1;
+let M[1,4] :=1;
+let M[1,7] :=1;
+let M[1,9] :=1;
+let M[1,13] :=1;
+let M[1,15] :=1;
+let M[1,18] :=1;
+let M[1,20] :=1;
+let M[2,3] :=1;
+let M[2,6] :=1;
+let M[2,8] :=1;
+let M[2,12] :=1;
+let M[2,14] :=1;
+let M[2,17] :=1;
+let M[2,19] :=1;
+let M[3,5] :=1;
+let M[3,7] :=1;
+let M[3,10] :=1;
+let M[3,13] :=1;
+let M[3,16] :=1;
+let M[3,18] :=1;
+let M[3,21] :=1;
+let M[4,5] :=1;
+let M[4,6] :=1;
+let M[4,10] :=1;
+let M[4,12] :=1;
+let M[4,16] :=1;
+let M[4,17] :=1;
+let M[4,21] :=1;
+let M[5,8] :=1;
+let M[5,9] :=1;
+let M[5,14] :=1;
+let M[5,15] :=1;
+let M[5,19] :=1;
+let M[5,20] :=1;
+let M[6,11] :=1;
+let M[6,13] :=1;
+let M[6,15] :=1;
+let M[6,22] :=1;
+let M[7,11] :=1;
+let M[7,12] :=1;
+let M[7,14] :=1;
+let M[7,22] :=1;
+let M[8,11] :=1;
+let M[8,13] :=1;
+let M[8,16] :=1;
+let M[8,22] :=1;
+let M[9,11] :=1;
+let M[9,12] :=1;
+let M[9,16] :=1;
+let M[9,22] :=1;
+let M[10,11] :=1;
+let M[10,14] :=1;
+let M[10,15] :=1;
+let M[10,22] :=1;
+let M[11,17] :=1;
+let M[11,18] :=1;
+let M[11,19] :=1;
+let M[11,20] :=1;
+let M[11,21] :=1;
+let M[12,23] :=1;
+let M[13,23] :=1;
+let M[14,23] :=1;
+let M[15,23] :=1;
+let M[16,23] :=1;
+let M[17,23] :=1;
+let M[18,23] :=1;
+let M[19,23] :=1;
+let M[20,23] :=1;
+let M[21,23] :=1;
+let M[22,23] :=1;
