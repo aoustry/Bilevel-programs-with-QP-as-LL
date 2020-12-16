@@ -4,8 +4,6 @@ option randseed 0;
 model ./ourmodel2.mod;
 data ./myciel7.dat;
 
-#display z;
-
 param iteration default 1;
 param maxit integer, default 1000;
 param contcuts default 0;
@@ -25,17 +23,18 @@ let nc := 0;
 repeat{
     #if iteration==1 then {let v:=0; for {i in N} let x[i]:=0; let x[1]:=1;}
     printf "Iteration %s, solving current relaxation.\n", iteration;
-    printf "***********Solving Relaxed problem***********";
+    printf "***********Solving Relaxed problem***********\n";
     solve relaxed;
         display x;
         if solve_result != 'solved' then {let v:=-1000; let{i in V} x[i]:=1/n; let {i in V, j in V} Q2_star[i,j] := Q2_fix[i,j];
-                let {i in V} q2_star[i] := q2_fix[i];   let {i in V} x_star[i] := x[i];}
+                			  let {i in V} q2_star[i] := q2_fix[i];   let {i in V} x_star[i] := x[i];}
         else {let {i in V, j in V} Q2_star[i,j] := Q2[i,j]; let {i in V} q2_star[i] := q2[i]; let {i in V} x_star[i] := x[i];}
 
 
-    printf "++++++++++Solving Lower Level problem+++++++++++++";
+    printf "++++++++++Solving Lower Level problem+++++++++++++\n";
     solve inner;
-        if solve_result != 'solved' then {let {i in V} y[i]:=1/n;}
+    if solve_result != 'solved' then {let {i in V} y[i]:=1/n;}
+    
     if sum{i in V}(sum{j in V}(y[i]*y[j]*Q2_star[i,j]))+sum{i in V}(q2_star[i]*y[i])+sum{i in V}(sum{j in V}(x_star[i]*y[j]*M[i,j]))  < -1e-5 - v + sum{i in V}(sum{j in V}(x[i]*x[j]*Q1[i,j]))+ sum{i in V}(q1[i]*x[i]) then
     {
 	printf "violation (it should be >= -1e-5)";
