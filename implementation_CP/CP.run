@@ -11,7 +11,7 @@ param maxit integer, default 1000;
 param contcuts default 0;
 param cuts default 0;
 
-option solver 'ipopt';
+option solver 'baron';
 #option baron_options "prfreq=100 outlev=1 maxtime = 100";
 
 problem relaxed:
@@ -24,17 +24,16 @@ let nc := 0;
 
 repeat{
     printf "Iteration %s, solving current relaxation.\n", iteration;
-
     printf "***********Solving Relaxed problem***********";
     solve relaxed;
     let {i in N, j in N} Q_star[i,j] := Q[i,j];
     let {i in N} q_star[i] := q[i];
     let c_star := c;
-
+    
     printf "++++++++++Solving Lower Level problem+++++++++++++";
     solve inner;
-
-    if sum{i in N}(0.5*sum{j in N}(y[i]*y[j]*Q[i,j]) + q[i]*y[i])+c  < -1e-6 then
+    
+    if obj_inner  < -1e-6 then
     {
         let nc := nc + 1; let {i in N} y_inner[nc,i] := y[i];  printf "Added a cut.\n"; let cuts := cuts +1;
     }
@@ -50,6 +49,7 @@ repeat{
     let iteration := iteration + 1;
 }
 
+option display_precision 4;
 display Q,q,c, LSE, _total_solve_time, iteration;
 
                                                                                                                       

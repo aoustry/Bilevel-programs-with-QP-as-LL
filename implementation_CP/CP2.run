@@ -2,20 +2,18 @@ reset;
 option randseed 0;
 
 model ./ourmodel2.mod;
-data ./inst2.dat;
-
-#display z;
+data ./myciel7.dat;
 
 param iteration default 1;
 param maxit integer, default 1000;
 param contcuts default 0;
 param cuts default 0;
 
-option solver 'baron';
+option solver 'cplex';
 #option baron_options "prfreq=100 outlev=1 maxtime = 100";
 
 problem relaxed:
-x, v, Q2, q2, obj_fun, simplex_x, matrix, vector, matrix_const, vector_const, cut;
+x, v, Q2, q2, obj_fun, simplex_x, matrix, vector, cut; #matrix_const, vector_const, cut;
 
 problem inner:
 y, obj_inner, simplex_y;
@@ -23,19 +21,25 @@ y, obj_inner, simplex_y;
 let nc := 0;
 
 repeat{
+    #if iteration==1 then {let v:=0; for {i in N} let x[i]:=0; let x[1]:=1;}
     printf "Iteration %s, solving current relaxation.\n", iteration;
-    printf "***********Solving Relaxed problem***********";
+    printf "***********Solving Relaxed problem***********\n";
     solve relaxed;
-    let {i in V, j in V} Q2_star[i,j] := Q2[i,j];
-    let {i in V} q2_star[i] := q2[i];
-    let {i in V} x_star[i] := x[i];
+        display x;
+        if solve_result != 'solved' then {let v:=-1000; let{i in V} x[i]:=1/n; let {i in V, j in V} Q2_star[i,j] := Q2_fix[i,j];
+                			  let {i in V} q2_star[i] := q2_fix[i];   let {i in V} x_star[i] := x[i];}
+        else {let {i in V, j in V} Q2_star[i,j] := Q2[i,j]; let {i in V} q2_star[i] := q2[i]; let {i in V} x_star[i] := x[i];}
 
-    printf "++++++++++Solving Lower Level problem+++++++++++++";
+
+    printf "++++++++++Solving Lower Level problem+++++++++++++\n";
     solve inner;
-
-    if obj_inner  < -1e-6 - v + sum{i in V}(sum{j in V}(x[i]*x[j]*Q1[i,j]))+ sum{i in V}(q1[i]*x[i]) then
+    if solve_result != 'solved' then {let {i in V} y[i]:=1/n;}
+    
+    if sum{i in V}(sum{j in V}(y[i]*y[j]*Q2_star[i,j]))+sum{i in V}(q2_star[i]*y[i])+sum{i in V}(sum{j in V}(x_star[i]*y[j]*M[i,j]))  < -1e-5 - v + sum{i in V}(sum{j in V}(x[i]*x[j]*Q1[i,j]))+ sum{i in V}(q1[i]*x[i]) then
     {
-        let nc := nc + 1; let {i in V} y_inner[nc,i] := y[i];  printf "Added a cut.\n"; let cuts := cuts +1;
+	printf "violation (it should be >= -1e-5)";
+        print sum{i in V}(sum{j in V}(y[i]*y[j]*Q2_star[i,j]))+sum{i in V}(q2_star[i]*y[i])+sum{i in V}(sum{j in V}(x_star[i]*y[j]*M[i,j])) -(- v + sum{i in V}(sum{j in V}(x[i]*x[j]*Q1[i,j]))+ sum{i in V}(q1[i]*x[i]));
+       let nc := nc + 1; let {i in V} y_inner[nc,i] := y[i];  printf "Added a cut.\n"; let cuts := cuts +1;
     }
 
     if contcuts == cuts then
@@ -49,6 +53,4 @@ repeat{
     let iteration := iteration + 1;
 }
 
-display x, y, v, _time_to_solve, iteration;
-
-                                                                                                                      
+display x, y, v, _total_solve_time, iteration;
