@@ -46,17 +46,11 @@ with Model("App1") as M:
     beta = M.variable("beta", Domain.unbounded())
     
     #Vars for PSD constraint
-<<<<<<< HEAD
-    PSDVar = M.variable(Domain.inPSDCone(n+1))
-    PSDVar_main = PSDVar.slice([0,0], [n,n])
-    PSDVar_vec = Var.flatten(PSDVar.slice([0,n], [n,n+1]))
-    PSDVar_offset = PSDVar.slice([n,n], [n+1,n+1])
-=======
+
     PSDVar = M.variable(Domain.inPSDCone(n+1)) #the whole matrix that must be PSD in (27)
     PSDVar_main = PSDVar.slice([0,0], [n,n]) #we take the first submatrix n x n in each component of the sum in (27) i.e. 0.5*Q, 0_n, alpha*I_n
     PSDVar_vec = Var.flatten(PSDVar.slice([0,n], [n,n+1])) #we take the second submatrix n x 1 i.e. 0.5*q, \sum_r(lambda_r*A)
-    PSDVar_offset = PSDVar.slice([n,n+1], [n,n+1])   #we take the third submatrix 1 x 1 i.e. \beta, alpha*1
->>>>>>> 05bdaffb0e5257cfdaedc0ddcc29357c9d4298f8
+    PSDVar_offset = PSDVar.slice([n,n], [n+1,n+1])   #we take the third submatrix 1 x 1 i.e. \beta, alpha*1
     
     #Objective
     deg0term = Expr.mul(c,np.ones(p))
@@ -87,7 +81,7 @@ with Model("App1") as M:
     M.solve()
 
     #Get results
-    print("Objective value ={0}".format(obj.level()))
+    print("Objective value ={0}".format(obj.level()**2))
     print(Q.level().reshape(n,n))
     print(Qref)
     print(q.level())
