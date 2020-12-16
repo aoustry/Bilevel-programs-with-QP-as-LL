@@ -59,7 +59,7 @@ with Model("App1") as M:
     prediction_term =  Expr.add(deg2term,Expr.add(deg1term,deg0term)) #predicted z (p points)
     M.constraint( Expr.vstack(obj, Expr.sub(prediction_term, z)), Domain.inQCone() ) #see below -- vstack put obj "above" (z-zpredicted) 
     M.objective( ObjectiveSense.Minimize, obj )
-    #we minimize obj s.t. obj**2 >= \sum_p (z_p-zpredicted_p)**2 -> It is like I am minimizing the square root of LSE 
+    #we minimize obj s.t. obj**2 >= \sum_p (z_p-zpredicted_p)**2 -> It is like we are minimizing the square root of LSE 
     
     #Symmetry constraint for Q
     M.constraint( Expr.sub(Q, Q.transpose()),  Domain.equalsTo(0,n,n) ) #Q-Q^T = 0
