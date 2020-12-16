@@ -11,7 +11,7 @@ import numpy as np
 
 # Sample input data
 n = 5
-asym = np.array([[2.7,-0.2,0,1,3],[2,2,1,0,0],[0,0,0.3,1,2],[1,0,0.3,5,2],[1.2,0,0.3,-1,0.4]])
+asym = np.array([[3.7,-0.2,0,1,3],[2,2,1,0,0],[0,0,3,1,2],[1,0,0.4,5,2],[1.2,0,0.4,-1,3]])
 Qref = 0.5*(asym + asym.transpose())
 qref = np.array([-2.3,-2,1,2,1])
 cref = 1.2
@@ -48,7 +48,7 @@ with Model("App1") as M:
     PSDVar = M.variable(Domain.inPSDCone(n+1))
     PSDVar_main = PSDVar.slice([0,0], [n,n])
     PSDVar_vec = Var.flatten(PSDVar.slice([0,n], [n,n+1]))
-    PSDVar_offset = PSDVar.slice([n,n+1], [n,n+1])
+    PSDVar_offset = PSDVar.slice([n,n], [n+1,n+1])
     
     #Objective
     deg0term = Expr.mul(c,np.ones(p))
@@ -74,7 +74,7 @@ with Model("App1") as M:
 
 
     # Solve
-    #M.setLogHandler(sys.stdout)            # Add logging
+    M.setLogHandler(sys.stdout)            # Add logging
     M.writeTask("App1.ptf")                # Save problem in readable format
     M.solve()
 

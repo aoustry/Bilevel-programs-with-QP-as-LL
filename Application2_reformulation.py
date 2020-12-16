@@ -6,7 +6,7 @@ from scipy.linalg import sqrtm
 from DimacsReader import *
 
 #Reading graph file
-f = DimacsReader("DIMACS/jean.col")
+f = DimacsReader("DIMACS/myciel7.col")
 M = f.M
 n = f.n
 
@@ -41,7 +41,7 @@ with Model("App1") as model:
     PSDVar = model.variable(Domain.inPSDCone(n+1))
     PSDVar_main = PSDVar.slice([0,0], [n,n])
     PSDVar_vec = Var.flatten(PSDVar.slice([0,n], [n,n+1]))
-    PSDVar_offset = PSDVar.slice([n,n+1], [n,n+1])
+    PSDVar_offset = PSDVar.slice([n,n], [n+1,n+1])
     
     #Objective
     model.objective( ObjectiveSense.Minimize, v )
