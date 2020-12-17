@@ -23,7 +23,7 @@ noiseless_z=0.5 *np.array([ w.dot(Qref).dot(w) for w in wlist]) + wlist.dot(qref
 print(noiseless_z.min())
 z = noiseless_z + noise
 wlist_square_flattened = np.array([(w.reshape(n,1).dot(w.reshape(1,n))).reshape(n**2) for w in wlist]) 
-#for each vector w, we create a matrix n x n (given by w*w^T) and then a vector n**2
+#for each vector w, we create a matrix n x n (given by w^T * w) and then a vector n**2
 
 #Definition of the LL polytope : [0,1]^n box
 A = np.concatenate([np.eye(n),-np.eye(n)])
