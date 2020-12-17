@@ -19,8 +19,6 @@ linear_cost2 = 0.1
 # Input data
 Q1 = quadcostlevel*(4*np.eye(n,k=0) - np.eye(n,k=1)-np.eye(n,k=-1))
 Q2 = quadcostlevel*(2*np.eye(n,k=0) -np.eye(n,k=1)-np.eye(n,k=-1))
-Q1 = quadcostlevel*np.eye(n)
-Q2 = quadcostlevel*np.eye(n)
 
 q1 = linear_cost1*np.ones(n)
 q2 = linear_cost2*np.ones(n)
@@ -35,7 +33,7 @@ with Model("App2") as model:
     x = model.variable("x", n, Domain.greaterThan(0.0))
         
     #LL variables
-    lam = model.variable("lambda", Domain.greaterThan(0.0))
+    lam = model.variable("lambda", Domain.unbounded())
     alpha = model.variable("alpha", Domain.greaterThan(0.0))
     beta = model.variable("beta", Domain.unbounded())
     
@@ -79,9 +77,10 @@ with Model("App2") as model:
     tres = t.level()[0]
     print("Check rotated cone constraint (t = 0.5 x^TQ_1x) : ", abs(tres-0.5*xres.dot(Q1).dot(xres)))
     print("Check last coefficient constraint :", PSDVar.level()[-1] - (alpha.level()[0]+beta.level()[0]))
-    print(xres.dot(Q1).dot(xres))
-    print(x.level())
-    
+    print("Upper level solution : ",x.level())
+    print(lam.level() + 2 * alpha.level() + beta.level())
+    print(alpha.level() + beta.level())
+        
 
    
     
