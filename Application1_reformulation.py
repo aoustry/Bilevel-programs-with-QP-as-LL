@@ -14,8 +14,8 @@ n = 5
 asym = np.array([[3.7,-0.2,0,1,3],[2,2,1,0,0],[0,0,3,1,2],[1,0,0.4,5,2],[1.2,0,0.4,-1,3]])
 Qref = 0.5*(asym + asym.transpose())
 qref = np.array([-2.3,-2,1,2,1])
-cref = 1.2
-sigma = 0.4
+cref = 2
+sigma = 0
 p = 5000
 wlist = np.random.rand(p,n)
 noise = np.random.normal(loc = 0, scale = sigma, size = p)

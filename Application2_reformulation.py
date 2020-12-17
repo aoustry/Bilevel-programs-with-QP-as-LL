@@ -6,7 +6,7 @@ from scipy.linalg import sqrtm
 from DimacsReader import *
 
 #Reading graph file
-f = DimacsReader("DIMACS/myciel7.col")
+f = DimacsReader("DIMACS/myciel4.col")
 M = f.M
 n = f.n
 
@@ -18,15 +18,17 @@ linear_cost2 = 0.1
 
 # Input data
 Q1 = quadcostlevel*(4*np.eye(n,k=0) - np.eye(n,k=1)-np.eye(n,k=-1))
-Q2 = quadcostlevel*(np.eye(n,k=0) -np.eye(n,k=1)-np.eye(n,k=-1))
+Q2 = quadcostlevel*(2*np.eye(n,k=0) -np.eye(n,k=1)-np.eye(n,k=-1))
+Q1 = quadcostlevel*np.eye(n)
+Q2 = quadcostlevel*np.eye(n)
+
 q1 = linear_cost1*np.ones(n)
 q2 = linear_cost2*np.ones(n)
 
 
-
 # Create a model with n semidefinite variables od dimension d x d
 
-with Model("App1") as model:
+with Model("App2") as model:
     
     #Upper level var
     v = model.variable("v", 1, Domain.unbounded())
@@ -46,24 +48,19 @@ with Model("App1") as model:
     #Objective
     model.objective( ObjectiveSense.Minimize, v )
 
-    
     #Simplex constraint for x
     model.constraint( Expr.sum(x),  Domain.equalsTo(1) )
-   
     
-    SOCvariable = model.variable(Domain.inQCone(n+1))
-    SOCvariable_1n = SOCvariable.slice(1,n+1)
-    ##t >= (SOC[0])**2 >= x^TQ_1x
-    P1 = sqrtm(Q1).T
-    model.constraint(Expr.sub(SOCvariable_1n,Expr.mul(P1,x)),Domain.equalsTo(0.0))
+    ##t >= 0.5 x^TQ_1x iif t >= 0.5 ||P_1 x ||^2   iif (t,1, P_1x) \in RotatedCone(n+2)
+    ## This constraint is necessary saturated at the optimum, thus we have t = 0.5 x^TQ_1x
+    P1 = sqrtm(Q1)
     t = model.variable("t", 1, Domain.unbounded())
-    model.constraint(Expr.hstack(0.5, t, SOCvariable.index(0)), Domain.inRotatedQCone())
+    model.constraint(Expr.vstack(t,1, Expr.mul(P1,x)), Domain.inRotatedQCone(n+2))
     
-    # -v + 0.5 t +q_1^Tx + lambda + 2 alpha + beta \leq 0 
-    
-    v_and_player1_opt = Expr.add( Expr.mul(-1,v), Expr.add(Expr.mul(0.5,t),Expr.dot(q1,x)))
+    # -v + t +q_1^Tx + lambda + 2 alpha + beta \leq 0 
+    v_and_player1_cost = Expr.add( Expr.mul(-1,v), Expr.add(t,Expr.dot(q1,x)))
     sum_of_duals = Expr.add(lam,Expr.add(Expr.mul(2,alpha),beta))
-    model.constraint(Expr.add(v_and_player1_opt,sum_of_duals),Domain.lessThan(0.0))
+    model.constraint(Expr.add(v_and_player1_cost,sum_of_duals),Domain.lessThan(0.0))
     
     #Constraints to define the several parts of the PSD matrix
     model.constraint(Expr.sub(Expr.add(0.5*Q2, Expr.mul(alpha,np.eye(n))), PSDVar_main),  Domain.equalsTo(0,n,n) )
@@ -73,15 +70,18 @@ with Model("App1") as model:
 
     # Solve
     model.setLogHandler(sys.stdout)            # Add logging
-    model.writeTask("App1.ptf")                # Save problem in readable format
+    model.writeTask("App2.ptf")                # Save problem in readable format
     model.solve()
 
     #Get results
     print("Objective value ={0}".format(v.level()))
     xres = x.level()
-    tres = t.level()
-    print(abs(tres-xres.dot(Q1).dot(xres)))
+    tres = t.level()[0]
+    print("Check rotated cone constraint (t = 0.5 x^TQ_1x) : ", abs(tres-0.5*xres.dot(Q1).dot(xres)))
+    print("Check last coefficient constraint :", PSDVar.level()[-1] - (alpha.level()[0]+beta.level()[0]))
     print(xres.dot(Q1).dot(xres))
     print(x.level())
+    
+
    
     
