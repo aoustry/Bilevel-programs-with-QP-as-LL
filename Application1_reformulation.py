@@ -82,9 +82,13 @@ with Model("App1") as M:
 
     #Get results
     print("Objective value ={0}".format(obj.level()**2))
+    print("Matrix Q")
     print(Q.level().reshape(n,n))
+    print("Matrix Q_ref")
     print(Qref)
+    print("Vector q")
     print(q.level())
+    print("Vector q_ref")
     print(qref)
     print("Average square error reconstruction ={0}".format(obj.level()**2/p))
     print("Average square error data ={0}".format(np.array([n**2 for n in noise]).sum()/p))
