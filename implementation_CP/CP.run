@@ -49,7 +49,7 @@ repeat{
     let iteration := iteration + 1;
 }
 
-option display_precision 4;
+#option display_precision 4;
 display Q,q,c, LSE, _total_solve_time, iteration;
 
                                                                                                                       
