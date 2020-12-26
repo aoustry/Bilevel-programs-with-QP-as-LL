@@ -1,4 +1,4 @@
-from mosek.fusion import *
+#from mosek.fusion import *
 import sys
 import numpy as np 
 import networkx
@@ -10,19 +10,15 @@ f = DimacsReader("DIMACS/myciel4.col")
 M = f.M
 n = f.n
 
+name = "myciel4"
 
-#Cost param 
-quadcostlevel = 0.01
-linear_cost1 = 0.1
-linear_cost2 = 0.1
+Q1= np.load("Application2_data/"+name+"/bigQ1.npy")
+Q2= np.load("Application2_data/"+name+"/bigQ2_fix.npy")
+q1= np.load("Application2_data/"+name+"/q1.npy")
+q2= np.load("Application2_data/"+name+"/q2_fix.npy")     
+Mcheck = np.load("Application2_data/"+name+"/M.npy")
 
-# Input data
-Q1 = quadcostlevel*(4*np.eye(n,k=0) - np.eye(n,k=1)-np.eye(n,k=-1))
-Q2 = quadcostlevel*(2*np.eye(n,k=0) -np.eye(n,k=1)-np.eye(n,k=-1))
-
-q1 = linear_cost1*np.ones(n)
-q2 = linear_cost2*np.ones(n)
-
+print(np.linalg.norm(M-Mcheck))
 
 # Create a model with n semidefinite variables od dimension d x d
 

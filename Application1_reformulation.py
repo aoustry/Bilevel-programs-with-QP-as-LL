@@ -10,81 +10,99 @@ import sys
 import numpy as np
 import time
 
-# Sample input data
-n = 5
-#asym = np.array([[3.7,-0.2,0,1,3],[2,2,1,0,0],[0,0,3,1,2],[1,0,0.4,5,2],[1.2,0,0.4,-1,3]])
-asym = 5*np.random.rand(n,n)
-Qref = 0.5*(asym + asym.transpose())
-#qref = np.array([-2.3,-2,1,2,1])
-qref = 3*np.random.rand(n)
-#cref = 2
-cref= 2*np.random.rand()
-sigma = 0.3
-p = 5000
-wlist = np.random.rand(p,n)
-noise = np.random.normal(loc = 0, scale = sigma, size = p)
+# # Sample input data
+# n = 5
+# #asym = np.array([[3.7,-0.2,0,1,3],[2,2,1,0,0],[0,0,3,1,2],[1,0,0.4,5,2],[1.2,0,0.4,-1,3]])
+# asym = 5*np.random.rand(n,n)
+# Qref = 0.5*(asym + asym.transpose())
+# #qref = np.array([-2.3,-2,1,2,1])
+# qref = 3*np.random.rand(n)
+# #cref = 2
+# cref= 2*np.random.rand()
+# sigma = 0.3
+# p = 5000
+# wlist = np.random.rand(p,n)
+# noise = np.random.normal(loc = 0, scale = sigma, size = p)
+# noiseless_z=0.5 *np.array([ w.dot(Qref).dot(w) for w in wlist]) + wlist.dot(qref) + cref
+# print(noiseless_z.min())
+# z = noiseless_z + noise
+# wlist_square_flattened = np.array([(w.reshape(n,1).dot(w.reshape(1,n))).reshape(n**2) for w in wlist]) 
+# #for each vector w, we create a matrix n x n (given by w^T * w) and then a vector n**2
+
+# #Definition of the LL polytope : [0,1]^n box
+# A = np.concatenate([np.eye(n),-np.eye(n)])
+# b = np.concatenate([np.ones(n),np.zeros(n)])
+# rho = np.sqrt(n)
+
+# #Write the .dat file
+# moment=time.strftime("%Y-%b-%d__%H_%M_%S",time.localtime()) #to have different .dat files for each python run
+# f = open("./instance"+moment+".dat","w")
+# f.write("param n := %d;\n"%n)
+# f.write("param p_max := %d;\n"%p)
+# f.write("param r_dim := 0;\n")
+# f.write("\nparam Q_ref :")
+# for i in range(n):
+#     f.write(" %d "%(i+1))
+# f.write(":=\n")
+# for i in range(n):
+#     for j in range(n):
+#         if j==0:
+#             f.write("   %d "%(i+1))
+#         f.write("%f "%Qref[i,j])
+#         if j==(n-1):
+#             if i==(n-1):
+#                 f.write(";")
+#             f.write("\n")
+
+# f.write("\nparam q_ref := ")
+# for i in range(n):
+#     f.write("%d "%(i+1))
+#     f.write("%f "%qref[i])
+# f.write(";\n\nparam c_ref := %f ;\n\n"%cref)
+# f.write("\nparam w:")
+# for i in range(n):
+#     f.write(" %d "%(i+1))
+# f.write(":=\n")
+# for i in range(p):
+#     for j in range(n):
+#         if j==0:
+#             f.write("   %d "%(i+1))
+#         f.write("%f "%wlist[i,j])
+#         if j==(n-1):
+#             if i==(p-1):
+#                 f.write(";")
+#             f.write("\n")
+# f.write("\nparam epsilon := ")
+# for i in range(p):
+#     f.write("%d "%(i+1))
+#     f.write("%f "%noise[i])
+# f.write(";\n")
+# f.write("\nparam z := ")
+# for i in range(p):
+#     f.write("%d "%(i+1))
+#     f.write("%f "%z[i])
+# f.write(";")
+# f.close()
+
+name = "test"
+#Loading data
+Qref = np.load("Application1_data/"+name+"/bigQref.npy")
+qref = np.load("Application1_data/"+name+"/qref.npy")
+n = len(qref)
+cref = float(np.load("Application1_data/"+name+"/cref.npy"))
+wlist = np.load("Application1_data/"+name+"/w.npy")
+noise = np.load("Application1_data/"+name+"/noise.npy")
+z = np.load("Application1_data/"+name+"/z.npy")
 noiseless_z=0.5 *np.array([ w.dot(Qref).dot(w) for w in wlist]) + wlist.dot(qref) + cref
-print(noiseless_z.min())
-z = noiseless_z + noise
+print(np.linalg.norm(z-noiseless_z-noise))
+
 wlist_square_flattened = np.array([(w.reshape(n,1).dot(w.reshape(1,n))).reshape(n**2) for w in wlist]) 
-#for each vector w, we create a matrix n x n (given by w^T * w) and then a vector n**2
+# #for each vector w, we create a matrix n x n (given by w^T * w) and then a vector n**2
 
 #Definition of the LL polytope : [0,1]^n box
 A = np.concatenate([np.eye(n),-np.eye(n)])
 b = np.concatenate([np.ones(n),np.zeros(n)])
 rho = np.sqrt(n)
-
-#Write the .dat file
-moment=time.strftime("%Y-%b-%d__%H_%M_%S",time.localtime()) #to have different .dat files for each python run
-f = open("./instance"+moment+".dat","w")
-f.write("param n := %d;\n"%n)
-f.write("param p_max := %d;\n"%p)
-f.write("param r_dim := 0;\n")
-f.write("\nparam Q_ref :")
-for i in range(n):
-    f.write(" %d "%(i+1))
-f.write(":=\n")
-for i in range(n):
-    for j in range(n):
-        if j==0:
-            f.write("   %d "%(i+1))
-        f.write("%f "%Qref[i,j])
-        if j==(n-1):
-            if i==(n-1):
-                f.write(";")
-            f.write("\n")
-
-f.write("\nparam q_ref := ")
-for i in range(n):
-    f.write("%d "%(i+1))
-    f.write("%f "%qref[i])
-f.write(";\n\nparam c_ref := %f ;\n\n"%cref)
-f.write("\nparam w:")
-for i in range(n):
-    f.write(" %d "%(i+1))
-f.write(":=\n")
-for i in range(p):
-    for j in range(n):
-        if j==0:
-            f.write("   %d "%(i+1))
-        f.write("%f "%wlist[i,j])
-        if j==(n-1):
-            if i==(p-1):
-                f.write(";")
-            f.write("\n")
-f.write("\nparam epsilon := ")
-for i in range(p):
-    f.write("%d "%(i+1))
-    f.write("%f "%noise[i])
-f.write(";\n")
-f.write("\nparam z := ")
-for i in range(p):
-    f.write("%d "%(i+1))
-    f.write("%f "%z[i])
-f.write(";")
-f.close()
-
-# Create a model with n semidefinite variables od dimension d x d
 
 with Model("App1") as M:
     
