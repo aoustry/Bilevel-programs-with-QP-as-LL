@@ -7,7 +7,7 @@ from DimacsReader import *
 
 def save(name, value):
     f = open("Application2_data/"+name+"/reformulation_obj_value.txt","w+")
-    f.write(value)
+    f.write(str(value))
     f.close()
 
 def main(name_dimacs,name):
@@ -74,7 +74,7 @@ def main(name_dimacs,name):
     
         #Get results
         print("Objective value ={0}".format(v.level()))
-        save(name,v.level())
+        save(name,v.level()[0])
         xres = x.level()
         tres = t.level()[0]
         print("Check rotated cone constraint (t = 0.5 x^TQ_1x) : ", abs(tres-0.5*xres.dot(Q1).dot(xres)))
