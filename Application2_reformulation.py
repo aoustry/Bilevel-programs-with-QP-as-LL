@@ -6,7 +6,7 @@ from scipy.linalg import sqrtm
 from DimacsReader import *
 
 def save(name, value):
-    f = open("Application2_data/"+name+"_reformulation_obj_value.txt")
+    f = open("Application2_data/"+name+"/reformulation_obj_value.txt")
     f.write(value)
     f.close()
 

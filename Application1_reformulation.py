@@ -11,7 +11,7 @@ import numpy as np
 import time
 
 def save(name, value):
-    f = open("Application1_data/"+name+"_reformulation_obj_value.txt")
+    f = open("Application1_data/"+name+"/reformulation_obj_value.txt")
     f.write(value)
     f.close()
 
