@@ -5,7 +5,12 @@ import networkx
 from scipy.linalg import sqrtm
 from DimacsReader import *
 
-def __main__(name_dimacs,name):
+def save(name, value):
+    f = open("Application2_data/"+name+"_reformulation_obj_value.txt")
+    f.write(value)
+    f.close()
+
+def main(name_dimacs,name):
     #Reading graph file
     f = DimacsReader("DIMACS/"+name_dimacs)
     M = f.M
@@ -69,6 +74,7 @@ def __main__(name_dimacs,name):
     
         #Get results
         print("Objective value ={0}".format(v.level()))
+        save(name,v.level())
         xres = x.level()
         tres = t.level()[0]
         print("Check rotated cone constraint (t = 0.5 x^TQ_1x) : ", abs(tres-0.5*xres.dot(Q1).dot(xres)))

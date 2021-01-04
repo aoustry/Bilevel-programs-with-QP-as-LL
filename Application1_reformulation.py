@@ -10,7 +10,12 @@ import sys
 import numpy as np
 import time
 
-def __main__(name):
+def save(name, value):
+    f = open("Application1_data/"+name+"_reformulation_obj_value.txt")
+    f.write(value)
+    f.close()
+
+def main(name):
     #Loading data
     Qref = np.load("Application1_data/"+name+"/bigQref.npy")
     qref = np.load("Application1_data/"+name+"/qref.npy")
@@ -80,6 +85,7 @@ def __main__(name):
     
         #Get results
         print("Objective value ={0}".format(obj.level()**2))
+        save(name,obj.level()**2)
         print("Matrix Q")
         print(Q.level().reshape(n,n))
         print("Matrix Q_ref")
