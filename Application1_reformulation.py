@@ -92,7 +92,9 @@ def __main__(name):
         print("Average square error data ={0}".format(np.array([n**2 for n in noise]).sum()/p))
         print("TODO : also print error between ref and reconstructed output")
     
-    
+
+if __name__ == "__main__":
+    main(sys.argv[1])
     # # Sample input data
     # n = 5
     # #asym = np.array([[3.7,-0.2,0,1,3],[2,2,1,0,0],[0,0,3,1,2],[1,0,0.4,5,2],[1.2,0,0.4,-1,3]])

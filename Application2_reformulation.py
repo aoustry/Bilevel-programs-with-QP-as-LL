@@ -78,5 +78,6 @@ def __main__(name_dimacs,name):
         print(alpha.level() + beta.level())
             
     
-       
+if __name__ == "__main__":
+    main(sys.argv[1],sys.argv[2])  
         
