@@ -26,6 +26,7 @@ def main(name):
     z = np.load("Application1_data/"+name+"/z.npy")
     noiseless_z=0.5 *np.array([ w.dot(Qref).dot(w) for w in wlist]) + wlist.dot(qref) + cref
     print(np.linalg.norm(z-noiseless_z-noise))
+    p = len(z)
     
     wlist_square_flattened = np.array([(w.reshape(n,1).dot(w.reshape(1,n))).reshape(n**2) for w in wlist]) 
     # #for each vector w, we create a matrix n x n (given by w^T * w) and then a vector n**2
