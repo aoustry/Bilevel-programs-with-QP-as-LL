@@ -52,6 +52,7 @@ def main(name_dimacs,name):
         
         ##t >= 0.5 x^TQ_1x iif t >= 0.5 ||P_1 x ||^2   iif (t,1, P_1x) \in RotatedCone(n+2)
         ## This constraint is necessary saturated at the optimum, thus we have t = 0.5 x^TQ_1x
+        
         P1 = sqrtm(Q1)
         t = model.variable("t", 1, Domain.unbounded())
         model.constraint(Expr.vstack(t,1, Expr.mul(P1,x)), Domain.inRotatedQCone(n+2))

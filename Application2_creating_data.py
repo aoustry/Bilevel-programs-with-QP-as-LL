@@ -9,6 +9,11 @@ from DimacsReader import *
 import time
 import os
 
+def _getAplus(A): 
+    eigval, eigvec = np.linalg.eig(A) 
+    Q = np.matrix(eigvec) 
+    xdiag = np.matrix(np.diag(np.maximum(eigval, 0))) 
+    return Q*xdiag*Q.T 
 
 def create_files(name,n,Q1,Q2,q1,q2,M):
    #Reading graph file
@@ -115,8 +120,10 @@ def create_files_random(name,nb):
     
     np.random.seed(nb)
     # Input data
-    Q1 = quadcostlevel*np.random.rand(n,n)
-    Q2 = quadcostlevel*np.random.rand(n,n)
+    asym1 = np.random.rand(n,n)
+    asym2 = np.random.rand(n,n)
+    Q1 = quadcostlevel*_getAplus(asym1+asym1.T)
+    Q2 = quadcostlevel*(asym2+asym2.T)
     
     q1 = linear_cost1*np.random.rand(n)
     q2 = linear_cost2*np.random.rand(n)
