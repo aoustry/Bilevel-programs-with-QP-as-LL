@@ -117,7 +117,7 @@ def create_files_random(name,nb):
     # Input data
     asym1 = np.random.rand(n,n)
     asym2 = np.random.rand(n,n)
-    Q1 = quadcostlevel*_getAplus(asym1.dot(asym1.T)) #Create PSD matrix
+    Q1 = quadcostlevel*(asym1.dot(asym1.T)) #Create PSD matrix
     Q2 = quadcostlevel*(asym2+asym2.T)
     
     q1 = linear_cost1*np.random.rand(n)
