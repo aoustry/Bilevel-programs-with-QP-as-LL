@@ -9,11 +9,6 @@ from DimacsReader import *
 import time
 import os
 
-def _getAplus(A): 
-    eigval, eigvec = np.linalg.eig(A) 
-    Q = np.matrix(eigvec) 
-    xdiag = np.matrix(np.diag(np.maximum(eigval, 0))) 
-    return Q*xdiag*Q.T 
 
 def create_files(name,n,Q1,Q2,q1,q2,M):
    #Reading graph file
@@ -115,14 +110,14 @@ def create_files_random(name,nb):
     
     #Cost param 
     quadcostlevel = 0.3
-    linear_cost1 = 0.2
+    linear_cost1 = 0.5
     linear_cost2 = 0.2
     
     np.random.seed(nb)
     # Input data
     asym1 = np.random.rand(n,n)
     asym2 = np.random.rand(n,n)
-    Q1 = quadcostlevel*_getAplus(asym1+asym1.T)
+    Q1 = quadcostlevel*_getAplus(asym1.dot(asym1.T)) #Create PSD matrix
     Q2 = quadcostlevel*(asym2+asym2.T)
     
     q1 = linear_cost1*np.random.rand(n)
