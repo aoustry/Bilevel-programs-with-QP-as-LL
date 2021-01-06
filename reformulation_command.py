@@ -19,6 +19,6 @@ list_graphs = ["myciel4","myciel7","jean"]
 for graph in list_graphs:
     nameDimacs = graph+".col"
     name = graph+"_det1"
-    os.system("python3 Application1_reformulation.py "+nameDimacs+" "+name)
+    os.system("python3 Application2_reformulation.py "+nameDimacs+" "+name)
     name = graph+"_random1"
-    os.system("python3 Application1_reformulation.py "+nameDimacs+" "+name)
+    os.system("python3 Application2_reformulation.py "+nameDimacs+" "+name)
