@@ -10,9 +10,10 @@ import sys
 import numpy as np
 import time
 
-def save(name, value, soltime, bigQ, q,c):
+def save(name, value,value_tested, soltime, bigQ, q,c):
     f = open("Application1_data/"+name+"/reformulation_obj_value.txt","w+")
-    f.write("Obj: "+str(value)+"\n")
+    f.write("Obj value returned by the solver: "+str(value)+"\n")
+    f.write("Obj value computed with solution variables: "+str(f.write("Obj: "+str(value)+"\n"))+"\n")
     f.write("SolTime: "+str(soltime)+"\n")
     f.write("Q matrix recovered: " +str(bigQ) +"\n")
     f.write("q vector recovered: " +str(q) +"\n")
@@ -99,7 +100,7 @@ def main(name):
             test+= (z[i]-0.5*w.dot(Qsol).dot(w) - w.dot(qsol) - csol)**2
         print(test,obj.level()**2)
         sol_time =  M.getSolverDoubleInfo("optimizerTime")
-        save(name,obj.level()[0]**2,sol_time,Qsol,qsol,csol)
+        save(name,obj.level()[0]**2,test,sol_time,Qsol,qsol,csol)
         print("Matrix Q")
         print(Qsol)
         print("Matrix Q_ref")
