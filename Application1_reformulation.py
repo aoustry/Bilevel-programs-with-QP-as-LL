@@ -10,9 +10,10 @@ import sys
 import numpy as np
 import time
 
-def save(name, value):
+def save(name, value, soltime):
     f = open("Application1_data/"+name+"/reformulation_obj_value.txt","w+")
-    f.write(str(value))
+    f.write("Obj: "+str(value))
+    f.write("SolTime: "+str(soltime))
     f.close()
 
 def main(name):
@@ -86,7 +87,8 @@ def main(name):
     
         #Get results
         print("Objective value ={0}".format(obj.level()**2))
-        save(name,obj.level()[0]**2)
+        sol_time =  M.getSolverDoubleInfo("optimizerTime")
+        save(name,obj.level()[0]**2,sol_time)
         print("Matrix Q")
         print(Q.level().reshape(n,n))
         print("Matrix Q_ref")
