@@ -10,12 +10,13 @@ import sys
 import numpy as np
 import time
 
-def save(name, value, soltime, bigQ, q):
+def save(name, value, soltime, bigQ, q,c):
     f = open("Application1_data/"+name+"/reformulation_obj_value.txt","w+")
     f.write("Obj: "+str(value)+"\n")
     f.write("SolTime: "+str(soltime)+"\n")
     f.write("Q matrix recovered: " +str(bigQ) +"\n")
     f.write("q vector recovered: " +str(q) +"\n")
+    f.write("Scalar c recovered: " +str(c) +"\n")
     f.close()
 
 def main(name):
@@ -95,7 +96,7 @@ def main(name):
         csol = c.level()
         for i in range(p):
             w = wlist[i]
-            test+= (z[i]-w.dot(Qsol).dot(w) - w.dot(qsol) - csol)**2
+            test+= (z[i]-0.5*w.dot(Qsol).dot(w) - w.dot(qsol) - csol)**2
         print(test,obj.level()**2)
         sol_time =  M.getSolverDoubleInfo("optimizerTime")
         save(name,obj.level()[0]**2,sol_time,Qsol,qsol,csol)
