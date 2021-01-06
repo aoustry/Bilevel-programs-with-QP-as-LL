@@ -89,14 +89,22 @@ def main(name):
     
         #Get results
         print("Objective value ={0}".format(obj.level()**2))
+        test = 0
+        Qsol = Q.level().reshape(n,n)
+        qsol = q.level()
+        csol = c.level()
+        for i in range(p):
+            w = wlist[i]
+            test+= (z[i]-w.dot(Qsol).dot(w) - w.dot(qsol) - csol)**2
+        print(test,obj.level()**2)
         sol_time =  M.getSolverDoubleInfo("optimizerTime")
-        save(name,obj.level()[0]**2,sol_time,Q.level().reshape(n,n),q.level())
+        save(name,obj.level()[0]**2,sol_time,Qsol,qsol,csol)
         print("Matrix Q")
-        print(Q.level().reshape(n,n))
+        print(Qsol)
         print("Matrix Q_ref")
         print(Qref)
         print("Vector q")
-        print(q.level())
+        print(qsol)
         print("Vector q_ref")
         print(qref)
         print("Average square error reconstruction ={0}".format(obj.level()**2/p))
