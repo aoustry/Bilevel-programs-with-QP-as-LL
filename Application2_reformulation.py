@@ -74,7 +74,7 @@ def main(name_dimacs,name):
         model.setLogHandler(sys.stdout)            # Add logging
         model.writeTask("App2.ptf")                # Save problem in readable format
         model.solve()
-        sol_time =  model.getSolverDoubleInfo("optimizerTime")
+        soltime =  model.getSolverDoubleInfo("optimizerTime")
         
         #Get results
         print("Objective value ={0}".format(v.level()))
