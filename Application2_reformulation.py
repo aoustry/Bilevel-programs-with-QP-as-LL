@@ -5,10 +5,11 @@ import networkx
 from scipy.linalg import sqrtm
 from DimacsReader import *
 
-def save(name, value,soltime):
+def save(name, value,soltime, xsol):
     f = open("Application2_data/"+name+"/reformulation_obj_value.txt","w+")
-    f.write("Obj: "+str(value))
-    f.write("SolTime: "+str(soltime))
+    f.write("Obj: "+str(value)+"\n")
+    f.write("SolTime: "+str(soltime)+"\n")
+    f;write("Upper level solution: "+str(xsol)+"\n")
     f.close()
 
 def main(name_dimacs,name):
@@ -77,7 +78,7 @@ def main(name_dimacs,name):
         
         #Get results
         print("Objective value ={0}".format(v.level()))
-        save(name,v.level()[0],soltime)
+        save(name,v.level()[0],soltime, x.level())
         xres = x.level()
         tres = t.level()[0]
         print("Check rotated cone constraint (t = 0.5 x^TQ_1x) : ", abs(tres-0.5*xres.dot(Q1).dot(xres)))
