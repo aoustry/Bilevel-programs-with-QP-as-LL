@@ -9,7 +9,7 @@ def save(name, value,soltime, xsol):
     f = open("Application2_data/"+name+"/reformulation_obj_value.txt","w+")
     f.write("Obj: "+str(value)+"\n")
     f.write("SolTime: "+str(soltime)+"\n")
-    f;write("Upper level solution: "+str(xsol)+"\n")
+    f.write("Upper level solution: "+str(xsol)+"\n")
     f.close()
 
 def main(name_dimacs,name):
