@@ -80,7 +80,7 @@ def main(name):
         
         #Constraints to define the several parts of the PSD matrix
         M.constraint(Expr.sub(Expr.add(Expr.mul(0.5,Q), Expr.mul(alpha,np.eye(n))), PSDVar_main),  Domain.equalsTo(0,n,n) )  
-        M.constraint( Expr.sub(Expr.add(Expr.mul(0.5,q), Expr.mul(lam,0.5*A)), PSDVar_vec),  Domain.equalsTo(0,n) )
+        #M.constraint( Expr.sub(Expr.add(Expr.mul(0.5,q), Expr.mul(lam,0.5*A)), PSDVar_vec),  Domain.equalsTo(0,n) )
         M.constraint( Expr.sub(Expr.add(beta, alpha), PSDVar_offset),  Domain.equalsTo(0) )
     
     
@@ -91,6 +91,7 @@ def main(name):
     
         #Get results
         print("Objective value ={0}".format(obj.level()**2))
+        print(PSDVar.level().reshape(n+1,n+1))
         test = 0
         Qsol = Q.level().reshape(n,n)
         qsol = q.level()
