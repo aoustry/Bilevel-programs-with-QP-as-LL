@@ -9,7 +9,8 @@ param maxit integer, default 1000;
 param contcuts default 0;
 param cuts default 0;
 
-option solver 'cplex';
+option gurobi_options "NonConvex=2";
+option solver 'gurobi';
 #option baron_options "prfreq=100 outlev=1 maxtime = 100";
 
 problem relaxed:
@@ -54,3 +55,4 @@ repeat{
 }
 
 display x, y, v, _total_solve_time, iteration;
+
