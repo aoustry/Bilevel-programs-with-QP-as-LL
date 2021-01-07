@@ -11,8 +11,8 @@ param maxit integer, default 1000;
 param contcuts default 0;
 param cuts default 0;
 
-option solver 'baron';
-#option baron_options "prfreq=100 outlev=1 maxtime = 100";
+option gurobi_options "NonConvex=2";
+option solver 'gurobi';
 
 problem relaxed:
 Q, q, c, LSE, symmetry, cut;
@@ -49,7 +49,10 @@ repeat{
     let iteration := iteration + 1;
 }
 
-#option display_precision 4;
 display Q,q,c, LSE, _total_solve_time, iteration;
+printf('Average square error reconstruction: ');
+print LSE/p_max;
+
+
 
                                                                                                                       
