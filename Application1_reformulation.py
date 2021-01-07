@@ -13,7 +13,7 @@ import time
 def save(name, p,value,value_tested, soltime, bigQ, q,c):
     f = open("Application1_data/"+name+"/reformulation_obj_value.txt","w+")
     f.write("Obj value returned by the solver: "+str(value)+"\n")
-    f.write("Obj value computed with solution variables: "+str(f.write("Obj: "+str(value)+"\n"))+"\n")
+    f.write("Obj value computed with solution variables: "+str(value_tested)+"\n")
     f.write("Average LSE = {0}".format(value/p))
     f.write("SolTime: "+str(soltime)+"\n")
     f.write("Q matrix recovered: " +str(bigQ) +"\n")
