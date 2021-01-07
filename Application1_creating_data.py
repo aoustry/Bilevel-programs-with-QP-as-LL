@@ -71,9 +71,9 @@ def create_files_PSD_instances(n,nb):
     name = "PSD_random"+str(nb)
     seed = nb
     np.random.seed(seed)
-    asym = 2*np.random.rand(n,n)
-    Qref = (asym + asym.transpose())
-    qref = 4*np.random.rand(n)
+    asym = 2*np.random.rand(n,n) - 1
+    Qref = asym.dot(asym.transpose())
+    qref = 2*(2*np.random.rand(n)-1)
     cref= 3*np.random.rand()+0.4*n-0.1*n*n
     sigma = 0.3
     p = 4000
@@ -88,9 +88,9 @@ def create_files_PSD_instances(n,nb):
 def create_files_nonPSD_instances(n,nb):
     name = "nonPSD_random"+str(nb)
     seed = 10+nb
-    asym = 2*np.random.rand(n,n)
-    Qref = asym
-    qref = 4*np.random.rand(n)
+    asym = 2*np.random.rand(n,n) - 1
+    Qref = asym + asym.transpose()
+    qref = 2*(2*np.random.rand(n)-1)
     cref= 3*np.random.rand()+0.4*n-0.04*n*n
     sigma = 0.3
     p = 4000
