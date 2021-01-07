@@ -28,3 +28,5 @@ q vextor:
 5   3.23945
 
 scalar c: 3.36782
+
+averageLSE : 0.0864524
