@@ -74,12 +74,13 @@ def create_files_PSD_instances(n,nb):
     asym = 2*np.random.rand(n,n) - 1
     Qref = asym.dot(asym.transpose())
     qref = 2*(2*np.random.rand(n)-1)
-    cref= 3*np.random.rand()+0.4*n-0.1*n*n
     sigma = 0.3
     p = 4000
     wlist = np.random.rand(p,n)
     noise = np.random.normal(loc = 0, scale = sigma, size = p)
-    noiseless_z=0.5 *np.array([ w.dot(Qref).dot(w) for w in wlist]) + wlist.dot(qref) + cref
+    aux=0.5 *np.array([ w.dot(Qref).dot(w) for w in wlist]) + wlist.dot(qref) 
+    cref = -aux.min()
+    noiseless_z = aux +cref
     print(noiseless_z.min())
     z = noiseless_z + noise
     create_files(name,n,p,Qref,qref,cref,wlist, noise,z)
@@ -91,12 +92,13 @@ def create_files_nonPSD_instances(n,nb):
     asym = 2*np.random.rand(n,n) - 1
     Qref = asym + asym.transpose()
     qref = 2*(2*np.random.rand(n)-1)
-    cref= 3*np.random.rand()+0.4*n-0.04*n*n
     sigma = 0.3
     p = 4000
     wlist = np.random.rand(p,n)
     noise = np.random.normal(loc = 0, scale = sigma, size = p)
-    noiseless_z=0.5 *np.array([ w.dot(Qref).dot(w) for w in wlist]) + wlist.dot(qref) + cref
+    aux=0.5 *np.array([ w.dot(Qref).dot(w) for w in wlist]) + wlist.dot(qref)
+    cref = -aux.min()
+    noiseless_z = aux +cref
     print(noiseless_z.min())
     z = noiseless_z + noise
     create_files(name, n, p, Qref, qref,cref, wlist, noise, z)

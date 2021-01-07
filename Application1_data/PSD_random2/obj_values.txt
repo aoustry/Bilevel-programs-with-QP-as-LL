@@ -1,6 +1,0 @@
-dual ref: 386.3823305417556
-
-CP: 358.928
-    _total_solve_time = 1.80173
-    iteration = 1
-    Average square error reconstruction: 0.08973198324959576
