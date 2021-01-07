@@ -1,7 +1,6 @@
 Obj value returned by the solver: 361.1607380134875
-Obj: 361.1607380134875
-Obj value computed with solution variables: 23
-Average LSE = 0.09029018450337188SolTime: 0.3406381607055664
+Obj value computed with solution variables: [361.16074419]
+Average LSE = 0.09029018450337188SolTime: 0.5419719219207764
 Q matrix recovered: [[ 3.39850841e+00  1.20392695e+00  1.33483994e+00 -8.29167678e-01
    1.33844684e+00 -1.46062570e+00  1.06291350e-01  1.13447556e+00
   -1.98557838e-01  6.15666286e-01]
