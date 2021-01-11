@@ -96,6 +96,12 @@ def create_files_deterministic_type1(name):
     # Input data
     Q1 = quadcostlevel*(4*np.eye(n,k=0) - np.eye(n,k=1)-np.eye(n,k=-1))
     Q2 = quadcostlevel*(2*np.eye(n,k=0) -np.eye(n,k=1)-np.eye(n,k=-1))
+    h = (np.linalg.eigvals)(Q1)
+    print(h)
+    assert(h.min()>=0)
+    h = (np.linalg.eigvals)(Q2)
+    print(h)
+    assert(h.min()>=0)
     
     q1 = linear_cost1*np.ones(n)
     q2 = linear_cost2*np.ones(n)
@@ -123,3 +129,10 @@ def create_files_random(name,nb):
     q1 = linear_cost1*np.random.rand(n)
     q2 = linear_cost2*np.random.rand(n)
     create_files(name+"_random"+str(nb),n,Q1,Q2,q1,q2,M)
+    
+    
+new_instances = ["myciel5","myciel6","queen5_5","queen6_6","queen7_7","queen8_8","queen8_12","queen9_9"]
+
+for name in new_instances:
+    create_files_deterministic_type1(name)
+    create_files_random(name, 1)
