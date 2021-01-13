@@ -25,6 +25,9 @@ def main(name_dimacs,name):
     Mcheck = np.load("Application2_data/"+name+"/M.npy")
     
     assert(np.linalg.norm(M-Mcheck)<1E-6)
+    assert(np.linalg.norm(M-M.T)<1E-6)
+    assert(np.linalg.norm(Q1-Q1.T)<1E-6)
+    assert(np.linalg.norm(Q2-Q2.T)<1E-6)
     
     # Create a model with n semidefinite variables od dimension d x d
     
@@ -64,8 +67,8 @@ def main(name_dimacs,name):
         
         #Constraints to define the several parts of the PSD matrix
         model.constraint(Expr.sub(Expr.add(0.5*Q2, Expr.mul(alpha,np.eye(n))), PSDVar_main),  Domain.equalsTo(0,n,n) )
-        model.constraint( Expr.sub(Expr.add(0.5*q2, Expr.add(Expr.mul(0.5*M.T,x),Expr.mul(lam,0.5*np.ones(n)))), PSDVar_vec),  Domain.equalsTo(0,n) )
-        model.constraint( Expr.sub(Expr.add(beta, alpha), PSDVar_offset),  Domain.equalsTo(0) )
+        model.constraint(Expr.sub(Expr.add(0.5*q2, Expr.add(Expr.mul(0.5*M.T,x),Expr.mul(lam,0.5*np.ones(n)))), PSDVar_vec),  Domain.equalsTo(0,n) )
+        model.constraint(Expr.sub(Expr.add(beta, alpha), PSDVar_offset),  Domain.equalsTo(0) )
     
         # Solve
         model.setLogHandler(sys.stdout)            # Add logging
