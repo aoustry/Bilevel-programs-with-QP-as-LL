@@ -17,15 +17,14 @@ def main(name_dimacs,name):
     f = DimacsReader("DIMACS/"+name_dimacs)
     M = f.M
     n = f.n
-    
-       
+
     Q1= np.load("Application2_data/"+name+"/bigQ1.npy")
     Q2= np.load("Application2_data/"+name+"/bigQ2_fix.npy")
     q1= np.load("Application2_data/"+name+"/q1.npy")
     q2= np.load("Application2_data/"+name+"/q2_fix.npy")     
     Mcheck = np.load("Application2_data/"+name+"/M.npy")
     
-    print(np.linalg.norm(M-Mcheck))
+    assert(np.linalg.norm(M-Mcheck)<1E-6)
     
     # Create a model with n semidefinite variables od dimension d x d
     
@@ -54,7 +53,6 @@ def main(name_dimacs,name):
         
         ##t >= 0.5 x^TQ_1x iif t >= 0.5 ||P_1 x ||^2   iif (t,1, P_1x) \in RotatedCone(n+2)
         ## This constraint is necessary saturated at the optimum, thus we have t = 0.5 x^TQ_1x
-        
         P1 = sqrtm(Q1)
         t = model.variable("t", 1, Domain.unbounded())
         model.constraint(Expr.vstack(t,1, Expr.mul(P1,x)), Domain.inRotatedQCone(n+2))
@@ -68,7 +66,6 @@ def main(name_dimacs,name):
         model.constraint(Expr.sub(Expr.add(0.5*Q2, Expr.mul(alpha,np.eye(n))), PSDVar_main),  Domain.equalsTo(0,n,n) )
         model.constraint( Expr.sub(Expr.add(0.5*q2, Expr.add(Expr.mul(0.5*M.T,x),Expr.mul(lam,0.5*np.ones(n)))), PSDVar_vec),  Domain.equalsTo(0,n) )
         model.constraint( Expr.sub(Expr.add(beta, alpha), PSDVar_offset),  Domain.equalsTo(0) )
-    
     
         # Solve
         model.setLogHandler(sys.stdout)            # Add logging
@@ -84,8 +81,7 @@ def main(name_dimacs,name):
         print("Check rotated cone constraint (t = 0.5 x^TQ_1x) : ", abs(tres-0.5*xres.dot(Q1).dot(xres)))
         print("Check last coefficient constraint :", PSDVar.level()[-1] - (alpha.level()[0]+beta.level()[0]))
         print("Upper level solution : ",x.level())
-        print(lam.level() + 2 * alpha.level() + beta.level())
-        print(alpha.level() + beta.level())
+
             
     
 if __name__ == "__main__":
