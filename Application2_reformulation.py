@@ -38,7 +38,7 @@ def main(name_dimacs,name):
         x = model.variable("x", n, Domain.greaterThan(0.0))
             
         #LL variables
-        lam = model.variable("lambda", Domain.unbounded())
+        lam = model.variable("lambda", 2,  Domain.greaterThan(0.0))
         alpha = model.variable("alpha", Domain.greaterThan(0.0))
         beta = model.variable("beta", Domain.unbounded())
         
@@ -60,14 +60,14 @@ def main(name_dimacs,name):
         t = model.variable("t", 1, Domain.unbounded())
         model.constraint(Expr.vstack(t,1, Expr.mul(P1,x)), Domain.inRotatedQCone(n+2))
         
-        # -v + t +q_1^Tx + lambda + 2 alpha + beta \leq 0 
+        # -v + t +q_1^Tx + lambda_1 + lambda_2 + 2 alpha + beta \leq 0 
         v_and_player1_cost = Expr.add( Expr.mul(-1,v), Expr.add(t,Expr.dot(q1,x)))
-        sum_of_duals = Expr.add(lam,Expr.add(Expr.mul(2,alpha),beta))
+        sum_of_duals = Expr.add(Expr.add(lam.index(0),lam.index(1)),Expr.add(Expr.mul(2,alpha),beta))
         model.constraint(Expr.add(v_and_player1_cost,sum_of_duals),Domain.lessThan(0.0))
         
         #Constraints to define the several parts of the PSD matrix
         model.constraint(Expr.sub(Expr.add(0.5*Q2, Expr.mul(alpha,np.eye(n))), PSDVar_main),  Domain.equalsTo(0,n,n) )
-        model.constraint(Expr.sub(Expr.add(0.5*q2, Expr.add(Expr.mul(0.5*M.T,x),Expr.mul(lam,0.5*np.ones(n)))), PSDVar_vec),  Domain.equalsTo(0,n) )
+        model.constraint(Expr.sub(Expr.add(0.5*q2, Expr.add(Expr.mul(0.5*M.T,x),Expr.mul(Expr.sub(lam.index(0),lam.index(1)),0.5*np.ones(n)))), PSDVar_vec),  Domain.equalsTo(0,n) )
         model.constraint(Expr.sub(Expr.add(beta, alpha), PSDVar_offset),  Domain.equalsTo(0) )
     
         # Solve
@@ -84,8 +84,6 @@ def main(name_dimacs,name):
         assert(abs(tres-0.5*xres.dot(Q1).dot(xres))<1E-7)
         assert(abs(PSDVar.level()[-1] - (alpha.level()[0]+beta.level()[0]))<1E-7)
         print("Upper level solution : ",x.level())
-
-            
     
 if __name__ == "__main__":
     main(sys.argv[1],sys.argv[2])  
