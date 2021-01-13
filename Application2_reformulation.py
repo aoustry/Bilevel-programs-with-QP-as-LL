@@ -78,8 +78,8 @@ def main(name_dimacs,name):
         save(name,v.level()[0],soltime, x.level())
         xres = x.level()
         tres = t.level()[0]
-        print("Check rotated cone constraint (t = 0.5 x^TQ_1x) : ", abs(tres-0.5*xres.dot(Q1).dot(xres)))
-        print("Check last coefficient constraint :", PSDVar.level()[-1] - (alpha.level()[0]+beta.level()[0]))
+        assert(abs(tres-0.5*xres.dot(Q1).dot(xres))<1E-7)
+        assert(abs(PSDVar.level()[-1] - (alpha.level()[0]+beta.level()[0]))<1E-7)
         print("Upper level solution : ",x.level())
 
             
