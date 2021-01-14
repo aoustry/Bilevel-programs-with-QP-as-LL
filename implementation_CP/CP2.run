@@ -8,6 +8,8 @@ param iteration default 1;
 param maxit integer, default 1000;
 param contcuts default 0;
 param cuts default 0;
+param time_relaxed default 0;
+param time_inner default 0;
 
 option gurobi_options "NonConvex=2";
 option solver 'gurobi';
@@ -26,25 +28,31 @@ repeat{
     printf "Iteration %s, solving current relaxation.\n", iteration;
     printf "***********Solving Relaxed problem***********\n";
     solve relaxed;
-        display x;
-        if solve_result != 'solved' then {let v:=-1000; let{i in V} x[i]:=1/n; let {i in V, j in V} Q2_star[i,j] := Q2_fix[i,j];
+    let time_relaxed := time_relaxed + _solve_time;
+    display time_relaxed;
+    display x;
+    if solve_result != 'solved' then {let v:=-1000; let{i in V} x[i]:=1/n; let {i in V, j in V} Q2_star[i,j] := Q2_fix[i,j];
                 			  let {i in V} q2_star[i] := q2_fix[i];   let {i in V} x_star[i] := x[i];}
-        else {let {i in V, j in V} Q2_star[i,j] := Q2[i,j]; let {i in V} q2_star[i] := q2[i]; let {i in V} x_star[i] := x[i];}
+    else {let {i in V, j in V} Q2_star[i,j] := Q2[i,j]; let {i in V} q2_star[i] := q2[i]; let {i in V} x_star[i] := x[i];}
 
 
     printf "++++++++++Solving Lower Level problem+++++++++++++\n";
     solve inner;
+    let time_inner := time_inner + _solve_time;
+    display time_inner;
     if solve_result != 'solved' then {let {i in V} y[i]:=1/n;}
     
-    if sum{i in V}(sum{j in V}(y[i]*y[j]*Q2_star[i,j]))+sum{i in V}(q2_star[i]*y[i])+sum{i in V}(sum{j in V}(x_star[i]*y[j]*M[i,j]))  < -1e-5 - v + sum{i in V}(sum{j in V}(x[i]*x[j]*Q1[i,j]))+ sum{i in V}(q1[i]*x[i]) then
+    if 0.5*sum{i in V}(sum{j in V}(y[i]*y[j]*Q2_star[i,j]))+sum{i in V}(q2_star[i]*y[i])+sum{i in V}(sum{j in V}(x_star[i]*y[j]*M[i,j]))  < -1e-6 - v + 0.5*sum{i in V}(sum{j in V}(x[i]*x[j]*Q1[i,j]))+ sum{i in V}(q1[i]*x[i]) then
     {
-	printf "violation (it should be >= -1e-5)";
-        print sum{i in V}(sum{j in V}(y[i]*y[j]*Q2_star[i,j]))+sum{i in V}(q2_star[i]*y[i])+sum{i in V}(sum{j in V}(x_star[i]*y[j]*M[i,j])) -(- v + sum{i in V}(sum{j in V}(x[i]*x[j]*Q1[i,j]))+ sum{i in V}(q1[i]*x[i]));
+	printf "violation (it should be >= -1e-6)";
+        print 0.5*sum{i in V}(sum{j in V}(y[i]*y[j]*Q2_star[i,j]))+sum{i in V}(q2_star[i]*y[i])+sum{i in V}(sum{j in V}(x_star[i]*y[j]*M[i,j])) -(- v + 0.5*sum{i in V}(sum{j in V}(x[i]*x[j]*Q1[i,j]))+ sum{i in V}(q1[i]*x[i]));
        let nc := nc + 1; let {i in V} y_inner[nc,i] := y[i];  printf "Added a cut.\n"; let cuts := cuts +1;
     }
 
     if contcuts == cuts then
     {
+    	printf "no violation (it is >= -1e-6)";
+        print 0.5*sum{i in V}(sum{j in V}(y[i]*y[j]*Q2_star[i,j]))+sum{i in V}(q2_star[i]*y[i])+sum{i in V}(sum{j in V}(x_star[i]*y[j]*M[i,j])) -(- v + 0.5*sum{i in V}(sum{j in V}(x[i]*x[j]*Q1[i,j]))+ sum{i in V}(q1[i]*x[i]));
         printf 'No cut has been added.\n';
         break;
     }
@@ -55,4 +63,8 @@ repeat{
 }
 
 display x, y, v, _total_solve_time, iteration;
+print "%time to solve relaxed problem: ";
+display time_relaxed/_total_solve_time;
+print "%time to solve inner problem: ";
+display time_inner/_total_solve_time;
 
