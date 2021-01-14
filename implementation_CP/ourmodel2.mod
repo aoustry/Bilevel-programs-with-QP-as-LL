@@ -37,7 +37,7 @@ s.t. vector {i in V}: q2[i]=q2_fix[i];
 #s.t. vector {i in V: i=2 or i=5}: q2[i]=x[i];
 #s.t. vector_const {i in V: i!=2 and i!=5}: q2[i]=q2_fix[i];
 #cuts
-s.t. cut {k in CUT}: - v + sum{i in V}(sum{j in V}(x[i]*x[j]*Q1[i,j]))+ sum{i in V}(q1[i]*x[i]) <= sum{i in V}(sum{j in V}(y_inner[k,i]*y_inner[k,j]*Q2[i,j]))+sum{i in V}(q2[i]*y_inner[k,i])+sum{i in V}(sum{j in V}(x[i]*y_inner[k,j]*M[i,j]));
+s.t. cut {k in CUT}: - v + 0.5*sum{i in V}(sum{j in V}(x[i]*x[j]*Q1[i,j]))+ sum{i in V}(q1[i]*x[i]) <= 0.5*sum{i in V}(sum{j in V}(y_inner[k,i]*y_inner[k,j]*Q2[i,j]))+sum{i in V}(q2[i]*y_inner[k,i])+sum{i in V}(sum{j in V}(x[i]*y_inner[k,j]*M[i,j]));
 
 #----------------
 #inner
@@ -51,7 +51,7 @@ param x_star {i in V};
 var y {i in V} >=0;
 
 #obj function
-minimize obj_inner: sum{i in V}(sum{j in V}(y[i]*y[j]*Q2_star[i,j]))+sum{i in V}(q2_star[i]*y[i])+sum{i in V}(sum{j in V}(x_star[i]*y[j]*M[i,j]));
+minimize obj_inner: 0.5*sum{i in V}(sum{j in V}(y[i]*y[j]*Q2_star[i,j]))+sum{i in V}(q2_star[i]*y[i])+sum{i in V}(sum{j in V}(x_star[i]*y[j]*M[i,j]));
 
 #constraints
 s.t. simplex_y: sum{i in V} y[i]=1;
