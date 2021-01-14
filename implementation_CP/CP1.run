@@ -1,7 +1,7 @@
 reset;
 option randseed 0;
 
-model ./ourmodel.mod;
+model ./ourmodel1.mod;
 data ./inst1.dat;
 
 #display z;
@@ -10,6 +10,8 @@ param iteration default 1;
 param maxit integer, default 1000;
 param contcuts default 0;
 param cuts default 0;
+param time_relaxed default 0;
+param time_inner default 0;
 
 option gurobi_options "NonConvex=2";
 option solver 'gurobi';
@@ -26,12 +28,16 @@ repeat{
     printf "Iteration %s, solving current relaxation.\n", iteration;
     printf "***********Solving Relaxed problem***********";
     solve relaxed;
+    let time_relaxed := time_relaxed + _solve_time;
+    display time_relaxed;
     let {i in N, j in N} Q_star[i,j] := Q[i,j];
     let {i in N} q_star[i] := q[i];
     let c_star := c;
     
     printf "++++++++++Solving Lower Level problem+++++++++++++";
     solve inner;
+    let time_inner := time_inner + _solve_time;
+    display time_inner;
     
     if obj_inner  < -1e-6 then
     {
@@ -52,6 +58,11 @@ repeat{
 display Q,q,c, LSE, _total_solve_time, iteration;
 printf('Average square error reconstruction: ');
 print LSE/p_max;
+print "%time to solve relaxed problem: ";
+display time_relaxed/_total_solve_time;
+print "%time to solve inner problem: ";
+display time_inner/_total_solve_time;
+
 
 
 
