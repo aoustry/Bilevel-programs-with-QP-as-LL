@@ -32,13 +32,17 @@ def main(name_dimacs,name):
     # Create a model with n semidefinite variables od dimension d x d
     
     with Model("App2") as model:
+        #y must be greater than 0
+        A = -np.eye(n)
+        #b = np.zeros(n)
         
         #Upper level var
         v = model.variable("v", 1, Domain.unbounded())
         x = model.variable("x", n, Domain.greaterThan(0.0))
             
         #LL variables
-        lam = model.variable("lambda", Domain.unbounded())
+        lam = model.variable("lambda", Domain.unbounded()) #lagrangian multiplier related to the equality constraint (simplex)
+        lam2 = model.variable("lambda2", n, Domain.greaterThan(0.0)) #lagrangian multiplier related to the nonnegativity of y
         alpha = model.variable("alpha", Domain.greaterThan(0.0))
         beta = model.variable("beta", Domain.unbounded())
         
@@ -60,14 +64,14 @@ def main(name_dimacs,name):
         t = model.variable("t", 1, Domain.unbounded())
         model.constraint(Expr.vstack(t,1, Expr.mul(P1,x)), Domain.inRotatedQCone(n+2))
         
-        # -v + t +q_1^Tx + lambda + 2 alpha + beta \leq 0 
+        # -v + t +q_1^Tx + lambda1 + 2 alpha + beta \leq 0 
         v_and_player1_cost = Expr.add( Expr.mul(-1,v), Expr.add(t,Expr.dot(q1,x)))
         sum_of_duals = Expr.add(lam,Expr.add(Expr.mul(2,alpha),beta))
         model.constraint(Expr.add(v_and_player1_cost,sum_of_duals),Domain.lessThan(0.0))
         
         #Constraints to define the several parts of the PSD matrix
         model.constraint(Expr.sub(Expr.add(0.5*Q2, Expr.mul(alpha,np.eye(n))), PSDVar_main),  Domain.equalsTo(0,n,n) )
-        model.constraint(Expr.sub(Expr.add(0.5*q2, Expr.add(Expr.mul(0.5*M.T,x),Expr.mul(lam,0.5*np.ones(n)))), PSDVar_vec),  Domain.equalsTo(0,n) )
+        model.constraint(Expr.sub(Expr.add(Expr.add(0.5*q2, Expr.add(Expr.mul(0.5*M.T,x),Expr.mul(lam,0.5*np.ones(n)))),Expr.mul(lam2,0.5*A)), PSDVar_vec),  Domain.equalsTo(0,n) )
         model.constraint(Expr.sub(Expr.add(beta, alpha), PSDVar_offset),  Domain.equalsTo(0) )
     
         # Solve
