@@ -29,7 +29,7 @@ def main(name_dimacs,name):
     Q2= np.load("Application2bis_data/"+name+"/bigQ2_fix.npy")
     q1= np.load("Application2bis_data/"+name+"/q1.npy")
     q2= np.load("Application2bis_data/"+name+"/q2_fix.npy")    
-    diagonalQ2x = np.load("Application2bis_data/"+name+"/diagQ2x")
+    diagonalQ2x = np.load("Application2bis_data/"+name+"/diagQ2x.npy")
     Mcheck = np.load("Application2bis_data/"+name+"/M.npy")
     
     assert(np.linalg.norm(M-Mcheck)<1E-6)
