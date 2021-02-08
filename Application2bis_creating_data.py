@@ -147,7 +147,7 @@ def create_files_random(name,nb):
     create_files(name+"_random"+str(nb),n,Q1,Q2,q1,q2,M,diagonalQ2x)
     
     
-new_instances = ["jean","myciel5","myciel6","queen5_5","queen6_6","queen7_7","queen8_8","queen8_12","queen9_9"]
+new_instances = ["jean","myciel4","myciel5","myciel6","queen5_5","queen6_6","queen7_7","queen8_8","queen8_12","queen9_9"]
 
 for name in new_instances:
     create_files_deterministic_type1(name)
