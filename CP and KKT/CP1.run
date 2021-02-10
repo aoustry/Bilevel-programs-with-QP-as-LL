@@ -1,0 +1,79 @@
+reset;
+option randseed 0;
+
+model ./ourmodel1.mod;
+data ./instances1/PSD_random1.dat;
+
+#display z;
+
+param iteration default 1;
+param maxit integer, default 1000;
+param contcuts default 0;
+param cuts default 0;
+param time_relaxed default 0;
+param time_inner default 0;
+
+
+option gurobi_options "NonConvex=2"; # timelim=14400";
+option solver 'gurobi';
+
+problem relaxed:
+Q, q, c, LSE, symmetry, cut;
+
+problem inner:
+y, obj_inner, polytope;
+
+
+let nc := 0;
+
+repeat{
+    printf "Iteration %s, solving current relaxation.\n\n", iteration;
+    printf "***********Solving Relaxed problem***********\n";
+    solve relaxed;
+    let time_relaxed := time_relaxed + _solve_time;
+    display time_relaxed;
+    let {i in N, j in N} Q_star[i,j] := Q[i,j];
+    let {i in N} q_star[i] := q[i];
+    let c_star := c;
+
+    printf "++++++++++Solving Lower Level problem+++++++++++++\n";
+    solve inner;
+    let time_inner := time_inner + _solve_time;
+    display time_inner;
+
+    if obj_inner  < - 5e-6 then
+    {
+        let nc := nc + 1; let {i in N} y_inner[nc,i] := y[i];  printf "Added a cut.\n"; let cuts := cuts +1;
+    }
+
+    if contcuts == cuts then
+    {
+        printf 'No cut has been added.\n';
+        break;
+    }
+    else {let contcuts := cuts;}
+
+    if time_inner+time_relaxed >= 18000 then {printf "\n***time limit exceeded+++\n" >> ./firstapplication.txt; print "***time limit exceeded+++"; break;}
+
+    if iteration == maxit then break;
+    let iteration := iteration + 1;
+}
+
+display Q,Q_ref,q,q_ref,c,c_ref, LSE, _total_solve_time, iteration;
+printf('Average square error reconstruction: ');
+print LSE/p_max;
+
+print "%time to solve relaxed problem: ";
+display time_relaxed/_total_solve_time;
+print "%time to solve inner problem: ";
+display time_inner/_total_solve_time;
+#******************
+printf('\n***********PSD1***********\n') >> ./firstapplication.txt;
+display LSE, _total_solve_time, iteration >> ./firstapplication.txt;
+printf('Average square error reconstruction: ') >> ./firstapplication.txt;
+print LSE/p_max>> ./firstapplication.txt;
+
+print "%time to solve relaxed problem: ">> ./firstapplication.txt;
+display time_relaxed/_total_solve_time>> ./firstapplication.txt;
+print "%time to solve inner problem: ">> ./firstapplication.txt;
+display time_inner/_total_solve_time >> ./firstapplication.txt;
