@@ -30,8 +30,9 @@ def plot_convergence_app(app_idx,instance_liste):
         for line in file.readlines():
             array.append(float(line))
         
-        plt.plot(np.abs(np.array(array)))
+        plt.plot(np.abs(np.array(array[app_idx-1:])), color ='grey')
     #plt.xscale('log')
+    plt.ylim([1E-8,10])
     plt.yscale('log')
     plt.title("Application {0}, convergence of the feasibility error.".format(app_idx))
     plt.xlabel("Iterations")
