@@ -23,25 +23,27 @@ def plot_convergence_single(name):
     plt.savefig("plots/"+name+".png")
     plt.close()
     
-def plot_convergence_app(app_idx,instance_liste):
+def plot_convergence_app(app_idx,instance_liste,target):
+    m = 0
     for name in instance_liste:
         file = open("epsilon/"+name+".txt")
         array = []
         for line in file.readlines():
             array.append(float(line))
-        
+        m = max(m, len(array))
         plt.plot(np.abs(np.array(array[app_idx-1:])), color ='grey')
+    plt.plot(range(m), np.ones(m)*target,color ='black',linestyle = ":")
     #plt.xscale('log')
     plt.ylim([1E-8,10])
     plt.yscale('log')
-    plt.title("Application {0}, convergence of the feasibility error.".format(app_idx))
+    #plt.title("Application {0}, convergence of the feasibility error.".format(app_idx))
     plt.xlabel("Iterations")
     plt.ylabel(r'Feasibility error $\epsilon_k$')
     plt.savefig("plots/app_{0}.png".format(app_idx))
     plt.close()
     
-for name in os.listdir('epsilon'):
-    plot_convergence_single(name[:len(name)-4])
+# for name in os.listdir('epsilon'):
+#     plot_convergence_single(name[:len(name)-4])
 
 app1liste = ['nonpsd1',
  'nonpsd10',
@@ -85,5 +87,5 @@ app2liste = ['jeannotpsd',
  'queen9notpsd',
  'queen9psd']
 
-plot_convergence_app(1,app1liste)
-plot_convergence_app(2,app2liste)
+plot_convergence_app(1,app1liste,1E-6)
+plot_convergence_app(2,app2liste,1E-6)
