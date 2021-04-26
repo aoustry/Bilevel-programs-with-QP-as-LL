@@ -26,6 +26,7 @@ option gurobi_options "NonConvex=2 feastol=1e-7 timelim=18000";
 let nc := 0;
 
 repeat{
+    printf('----------------------------------------------------------------------------------------\n');
     printf "Iteration %s, solving current relaxation.\n\n", iteration;
     printf "***********Solving Relaxed problem***********\n";
     solve relaxed;
