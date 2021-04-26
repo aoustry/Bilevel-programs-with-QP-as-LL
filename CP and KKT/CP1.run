@@ -7,21 +7,24 @@ data ./instances1/PSD_random1.dat;
 #display z;
 
 param iteration default 1;
-param maxit integer, default 1000;
+#param maxit integer, default 1000;
 param contcuts default 0;
 param cuts default 0;
 param time_relaxed default 0;
 param time_inner default 0;
+param c_feas default 0;
+param UB default 0;
 
 
-option gurobi_options "NonConvex=2"; # timelim=14400";
 option solver 'gurobi';
 
 problem relaxed:
 Q, q, c, LSE, symmetry, cut;
+option gurobi_options "NonConvex=-1 timelim=18000";
 
 problem inner:
 y, obj_inner, polytope;
+option gurobi_options "NonConvex=2 timelim=18000";
 
 
 let nc := 0;
@@ -41,10 +44,17 @@ repeat{
     let time_inner := time_inner + _solve_time;
     display time_inner;
 
-    if obj_inner  < - 5e-6 then
+    if obj_inner  < - 1e-6 then
     {
         let nc := nc + 1; let {i in N} y_inner[nc,i] := y[i];  printf "Added a cut.\n"; let cuts := cuts +1;
     }
+    
+    #compute an upper-bound
+    let c_feas :=  - sum{i in N}(0.5*sum{j in N}(y[i]*y[j]*Q[i,j])) - sum{i in N}(q[i]*y[i]);
+    let UB := sum{p in P} (z[p]-sum{i in N}(0.5*sum{j in N}(w[p,i]*w[p,j]*Q[i,j])) - sum{i in N}(q[i]*w[p,i])-c_feas)^2;
+    display UB;
+    print(obj_inner) >>./epsilon/psd10.txt; #save the feasibility error during the iterations
+
 
     if contcuts == cuts then
     {
@@ -54,22 +64,21 @@ repeat{
     else {let contcuts := cuts;}
 
     if time_inner+time_relaxed >= 18000 then {printf "\n***time limit exceeded+++\n" >> ./firstapplication.txt; print "***time limit exceeded+++"; break;}
-
-    if iteration == maxit then break;
+ 
+#    if iteration == maxit then break;
     let iteration := iteration + 1;
 }
 
-display Q,Q_ref,q,q_ref,c,c_ref, LSE, _total_solve_time, iteration;
+display Q,Q_ref,q,q_ref,c,c_ref, LSE,UB, _total_solve_time, iteration;
 printf('Average square error reconstruction: ');
 print LSE/p_max;
-
 print "%time to solve relaxed problem: ";
 display time_relaxed/_total_solve_time;
 print "%time to solve inner problem: ";
 display time_inner/_total_solve_time;
 #******************
 printf('\n***********PSD1***********\n') >> ./firstapplication.txt;
-display LSE, _total_solve_time, iteration >> ./firstapplication.txt;
+display LSE,UB, _total_solve_time, iteration >> ./firstapplication.txt;
 printf('Average square error reconstruction: ') >> ./firstapplication.txt;
 print LSE/p_max>> ./firstapplication.txt;
 
