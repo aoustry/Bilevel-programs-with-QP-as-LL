@@ -49,11 +49,11 @@ repeat{
         let nc := nc + 1; let {i in N} y_inner[nc,i] := y[i];  printf "Added a cut.\n"; let cuts := cuts +1;
     }
     
-    #compute an upper-bound
+    #computing an Upper Bound
     let c_feas :=  - sum{i in N}(0.5*sum{j in N}(y[i]*y[j]*Q[i,j])) - sum{i in N}(q[i]*y[i]);
     let UB := sum{p in P} (z[p]-sum{i in N}(0.5*sum{j in N}(w[p,i]*w[p,j]*Q[i,j])) - sum{i in N}(q[i]*w[p,i])-c_feas)^2;
     display UB;
-    print(obj_inner) >>./epsilon/psd10.txt; #save the feasibility error during the iterations
+    print(obj_inner) >>./epsilon/psd10.txt; #saving the feasibility error at each iteration
 
 
     if contcuts == cuts then
