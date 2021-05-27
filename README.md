@@ -6,6 +6,7 @@ M. Cerulli(1), A. Oustry(1,2), C. D'Ambrosio(1), L. Liberti(1). Solving a class 
 
 # Affiliations
 (1) LIX CNRS, Ecole polytechnique, Institute Polytechnique de Paris, 91120 Palaiseau, France
+
 (2) École des Ponts, Marne-la-Vallée, France
 
 # Sponsors
