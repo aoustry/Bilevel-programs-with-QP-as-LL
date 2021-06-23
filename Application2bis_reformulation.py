@@ -59,23 +59,23 @@ def main(name_dimacs,name):
         PSDVar_main = PSDVar.slice([0,0], [n,n])
         PSDVar_vec = Var.flatten(PSDVar.slice([0,n], [n,n+1]))
         PSDVar_offset = PSDVar.slice([n,n], [n+1,n+1])
+        #other auxiliary variables
+        t = model.variable("t", 1, Domain.unbounded()) #upper level variable
+        P1 = sqrtm(Q1) #necessary for the following constraint
+        ##t >= 0.5 x^TQ_1x iif t >= 0.5 ||P_1 x ||^2   iif (t,1, P_1x) \in RotatedCone(n+2)
+        ## This constraint is necessary saturated at the optimum, thus we have t = 0.5 x^TQ_1x
+        model.constraint(Expr.vstack(t,1, Expr.mul(P1,x)), Domain.inRotatedQCone(n+2))
+        v_and_player1_cost = Expr.add(v, Expr.add(t,Expr.dot(q1,x))) #upper level objective function
         
         #Objective
-        model.objective( ObjectiveSense.Minimize, v )
+        model.objective( "objfunct", ObjectiveSense.Minimize, v_and_player1_cost )
     
         #Simplex constraint for x
         model.constraint( Expr.sum(x),  Domain.equalsTo(1) )
-        
-        ##t >= 0.5 x^TQ_1x iif t >= 0.5 ||P_1 x ||^2   iif (t,1, P_1x) \in RotatedCone(n+2)
-        ## This constraint is necessary saturated at the optimum, thus we have t = 0.5 x^TQ_1x
-        P1 = sqrtm(Q1)
-        t = model.variable("t", 1, Domain.unbounded())
-        model.constraint(Expr.vstack(t,1, Expr.mul(P1,x)), Domain.inRotatedQCone(n+2))
-        
-        # -v + t +q_1^Tx + lambda1 + 2 alpha + beta \leq 0 
-        v_and_player1_cost = Expr.add( Expr.mul(-1,v), Expr.add(t,Expr.dot(q1,x)))
+         
+        # -v + lambda1 + 2 alpha + beta \leq 0 
         sum_of_duals = Expr.add(lam,Expr.add(Expr.mul(2,alpha),beta))
-        model.constraint(Expr.add(v_and_player1_cost,sum_of_duals),Domain.lessThan(0.0))
+        model.constraint(Expr.add(Expr.mul(-1,v),sum_of_duals),Domain.lessThan(0.0))
         
         #Constraints to define the several parts of the PSD matrix
         Q2x = Expr.add([Expr.mul(x.index(i),Matrix.sparse(n, n, [i], [i], [0.5*diagonalQ2x[i]])) for i in range(n)])
@@ -90,13 +90,17 @@ def main(name_dimacs,name):
         soltime =  model.getSolverDoubleInfo("optimizerTime")
         
         #Get results
-        print("Objective value ={0}".format(v.level()))
-        save(name,v.level()[0],soltime, x.level())
         xres = x.level()
         tres = t.level()[0]
+        vres = v.level()
+        objres = 0.5*xres.dot(Q1).dot(xres) + vres + q1.dot(xres)
         assert(abs(tres-0.5*xres.dot(Q1).dot(xres))<1E-7)
         assert(abs(PSDVar.level()[-1] - (alpha.level()[0]+beta.level()[0]))<1E-7)
         print("Upper level solution : ",x.level())
+        print("Objective value =",objres)
+        print("v :", v.level())
+        save(name,objres,soltime, x.level(),v.level())
+            
 
             
     
