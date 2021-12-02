@@ -10,7 +10,7 @@ from gurobipy import GRB
 import numpy as np
 import time
 from itertools import combinations
-import sys
+
 
 def save(name, p,value, soltime,itnumber, bigQ, q,c):
     f = open("Application1_data/"+name+"/cutting_plane.txt","w+")

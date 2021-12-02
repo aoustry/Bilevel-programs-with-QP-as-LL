@@ -11,7 +11,7 @@ from Application2bis_cutting_planes import main_app2
 
 #Call application 1
 
-for i in range(1,7):
+for i in range(1,10):
     name = "PSD_random"+str(i)
     main_app1(name)
     name = "notPSD_random"+str(i)

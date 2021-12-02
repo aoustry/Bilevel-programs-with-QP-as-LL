@@ -8,7 +8,7 @@ import os
 
 #Call application 1
 
-for i in range(1,7):
+for i in range(1,10):
     name = "PSD_random"+str(i)
     os.system("python3 Application1_reformulation.py "+name)
     name = "nonPSD_random"+str(i)
