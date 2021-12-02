@@ -10,18 +10,20 @@ from gurobipy import GRB
 import numpy as np
 import time
 from itertools import combinations
+import sys
 
-def save(name, p,value, soltime, bigQ, q,c):
+def save(name, p,value, soltime,itnumber, bigQ, q,c):
     f = open("Application1_data/"+name+"/cutting_plane.txt","w+")
     f.write("Obj value returned by the CP solver: "+str(value)+"\n")
     f.write("Average LSE = {0}".format(value/p))
     f.write("SolTime: "+str(soltime)+"\n")
+    f.write("It. number: "+str(itnumber)+"\n")
     f.write("Q matrix recovered: " +str(bigQ) +"\n")
     f.write("q vector recovered: " +str(q) +"\n")
     f.write("Scalar c recovered: " +str(c) +"\n")
     f.close()
 
-def main(name):
+def main_app1(name):
     #Loading data
     wlist = np.load("Application1_data/"+name+"/w.npy")
     p,n = wlist.shape
@@ -37,11 +39,12 @@ def main(name):
     for (i,j) in combinations(range(n),2):
           master.addConstr(flattenedQvar[i*n+j]==flattenedQvar[j*n+i])
     master.setObjective(spread@spread, GRB.MINIMIZE)
-    running = True
+    running, itnumber = True,0
     while running:
         master.optimize()
         flattenedQ,q,c = flattenedQvar.X, qvar.X, cvar.X
         Q = flattenedQ.reshape((n,n))
+        itnumber+=1
         y,val = solve_subproblem_App1(n,Q,q,c)
         if val>-1E-6:
             running=False
@@ -49,7 +52,7 @@ def main(name):
             Y = (y.reshape(n,1).dot(y.reshape(1,n))).flatten()
             master.addConstr(0.5*Y@flattenedQvar + y@qvar + cvar >=0)
     soltime = time.time() - t0
-    save(name, p,master.objVal, soltime, flattenedQ, q,c)
+    save(name, p,master.objVal, soltime, itnumber,flattenedQ, q,c)
 
 def solve_subproblem_App1(n,Q,q,c):
     m = gp.Model("LL problem")
@@ -60,7 +63,5 @@ def solve_subproblem_App1(n,Q,q,c):
     m.optimize()
     return y.X, m.objVal
 
-main('notPSD_random8')
-# if __name__ == "__main__":
-#     main(sys.argv[1])
+
    
