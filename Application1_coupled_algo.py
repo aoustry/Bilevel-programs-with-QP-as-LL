@@ -28,6 +28,7 @@ def save(name, p,value,value_tested, soltime, bigQ, q,c):
     
 def solve_subproblem_App1(n,Q,q,c):
     m = gp.Model("LL problem")
+    m.Params.LogToConsole = 0
     y = m.addMVar(n, lb = 0.0, ub = 1.0, name="y")
     Qtimeshalf = 0.5*Q
     m.setObjective(y@Qtimeshalf@y+  q@y +c, GRB.MINIMIZE)
@@ -39,37 +40,110 @@ def main(name,mu):
     #Loading data
     Qref = np.load("Application1_data/"+name+"/bigQref.npy")
     qref = np.load("Application1_data/"+name+"/qref.npy")
-    n = len(qref)
     cref = float(np.load("Application1_data/"+name+"/cref.npy"))
     wlist = np.load("Application1_data/"+name+"/w.npy")
     noise = np.load("Application1_data/"+name+"/noise.npy")
     z = np.load("Application1_data/"+name+"/z.npy")
     noiseless_z=0.5 *np.array([ w.dot(Qref).dot(w) for w in wlist]) + wlist.dot(qref) + cref
-    print(np.linalg.norm(z-noiseless_z-noise))
-    Qxk_list, qxk_list, vxk_list,yklist,running = [],[],[],[],True
     it_count = 0
-    #two_sb_pb = True
+    mu2 = 100*mu
+    """Solve the restriction. If sufficient condition of GOPT is satisfied, stop"""
+    Qsol,qsol,csol,minvp=restriction(name,n,wlist,z)
+    running = minvp<1e-7
+    print(minvp)
+    """If not, we run the inner/outer approximation algorithm """
+    Qxk_list, qxk_list, vxk_list,yklist = [],[],[],[]
     while running:
-        Qsol,qsol,csol,Qsolrelax,qsolrelax,csolrelax,dist = master(name,n,wlist,z,Qxk_list,qxk_list,np.array(vxk_list),yklist,mu)
+        print(mu)
+        Qsol,qsol,csol,Qsolrelax,qsolrelax,csolrelax,obj,obj_relax,dist = master(name,n,wlist,z,Qxk_list,qxk_list,np.array(vxk_list),yklist,mu)
         yrelax,valrelax = solve_subproblem_App1(n,Qsolrelax,qsolrelax,csolrelax)
         Qxk_list.append(Qsolrelax)
         qxk_list.append(qsolrelax)
         vxk_list.append(valrelax-csolrelax)
         yklist.append(yrelax)
-        # if two_sb_pb:
-        #     y,val = solve_subproblem_App1(n,Qsol,qsol,csol)
-        #     Qxk_list.append(Qsol)
-        #     qxk_list.append(qsol)
-        #     vxk_list.append(val-csol)
-        #     yklist.append(y)
+        if abs(obj-obj_relax)/abs(obj)<0.001:
+            mu = mu2
         if valrelax>-1E-6 and dist<1E-6:
             running=False
         it_count+=1
         print("Iteration number {0}".format(it_count))
     #save(name,len(z),objrelax.level()[0]**2,test,sol_time,Qsol,qsol,csol)
+    
+
+def restriction(name,n,wlist,z):
+    "Solve the single level restriction"
+    p = len(z) 
+    wlist_square_flattened = np.array([(w.reshape(n,1).dot(w.reshape(1,n))).reshape(n**2) for w in wlist]) 
+    
+    #Definition of the LL polytope : [0,1]^n box
+    A = np.concatenate([np.eye(n),-np.eye(n)])
+    b = np.concatenate([np.ones(n),np.zeros(n)])
+    rho = np.sqrt(n)
+    
+    with Model("App1") as M:
+        
+        #Upper level var
+        obj = M.variable("t", 1, Domain.unbounded())
+        Q = M.variable("Q", [n,n], Domain.unbounded())
+        q = M.variable("q", n, Domain.unbounded())
+        c = M.variable("c", Domain.unbounded())
+        
+        #LL variables
+        lam = M.variable("lambda", len(b), Domain.greaterThan(0.0))
+        alpha = M.variable("alpha", Domain.greaterThan(0.0))
+        beta = M.variable("beta", Domain.unbounded())
+        
+        #Vars for PSD constraint
+    
+        PSDVar = M.variable(Domain.inPSDCone(n+1)) #the whole matrix that must be PSD in (27)
+        PSDVar_main = PSDVar.slice([0,0], [n,n]) #we take the first submatrix n x n in each component of the sum in (27) i.e. 0.5*Q, 0_n, alpha*I_n
+        PSDVar_vec = Var.flatten(PSDVar.slice([0,n], [n,n+1])) #we take the second submatrix n x 1 i.e. 0.5*q, \sum_r(lambda_r*A)
+        PSDVar_offset = PSDVar.slice([n,n], [n+1,n+1])   #we take the third submatrix 1 x 1 i.e. \beta, alpha*1
+        
+        #Objective
+        deg0term = Expr.mul(c,np.ones(p))
+        deg1term = Expr.mul(wlist, q)
+        deg2term = Expr.mul(0.5,Expr.mul(wlist_square_flattened, Var.flatten(Q)))
+        
+        prediction_term =  Expr.add(deg2term,Expr.add(deg1term,deg0term)) #predicted z (p points)
+        M.constraint( Expr.vstack(obj, Expr.sub(prediction_term, z)), Domain.inQCone() ) #see below -- vstack put obj "above" (z-zpredicted) 
+        M.objective( ObjectiveSense.Minimize, obj )
+        #we minimize obj s.t. obj**2 >= \sum_p (z_p-zpredicted_p)**2 -> It is like we are minimizing the square root of LSE 
+        
+        #Symmetry constraint for Q
+        M.constraint( Expr.sub(Q, Q.transpose()),  Domain.equalsTo(0,n,n) ) #Q-Q^T = 0
+       
+        # c - (\lambda^T b + \alpha (1+ rho^2) + beta) >=0 
+        LL_obj_expr = Expr.add(Expr.dot(lam,b),Expr.add(Expr.mul((1+rho**2),alpha),beta))
+        M.constraint(Expr.sub(c,LL_obj_expr),Domain.greaterThan(0.0))
+        
+        #Constraints to define the several parts of the PSD matrix
+        M.constraint(Expr.sub(Expr.add(Expr.mul(0.5,Q), Expr.mul(alpha,np.eye(n))), PSDVar_main),  Domain.equalsTo(0,n,n) )  
+        M.constraint( Expr.sub(Expr.add(Expr.mul(0.5,q), Expr.mul(lam,0.5*A)), PSDVar_vec),  Domain.equalsTo(0,n) )
+        M.constraint( Expr.sub(Expr.add(beta, alpha), PSDVar_offset),  Domain.equalsTo(0) )
+    
+    
+        # Solve
+        M.writeTask("App1.ptf")                # Save problem in readable format
+        M.solve()
+    
+        #Get results
+        print("Objective value ={0}".format(obj.level()**2))
+        print(PSDVar.level().reshape(n+1,n+1))
+        test = 0
+        Qsol = Q.level().reshape(n,n)
+        qsol = q.level()
+        csol = c.level()
+        for i in range(p):
+            w = wlist[i]
+            test+= (z[i]-0.5*w.dot(Qsol).dot(w) - w.dot(qsol) - csol)**2
+        sol_time =  M.getSolverDoubleInfo("optimizerTime")
+        save(name,p,obj.level()[0]**2,test,sol_time,Qsol,qsol,csol)
+        return Qsol,qsol,csol,min(np.linalg.eigvalsh(Qsol))
 
 
 def master(name,n,wlist,z,Qxk_list,qxk_list, vxk_vector,yklist,mu):
+    "Solve the master problem"
     p = len(z)
     wlist_square_flattened = np.array([(w.reshape(n,1).dot(w.reshape(1,n))).reshape(n**2) for w in wlist]) 
     # #for each vector w, we create a matrix n x n (given by w^T * w) and then a vector n**2
@@ -164,7 +238,8 @@ def master(name,n,wlist,z,Qxk_list,qxk_list, vxk_vector,yklist,mu):
             M.constraint(Expr.add(Expr.add(Expr.dot(Var.flatten(Qrelax),0.5*Y.flatten()),Expr.dot(qrelax,y)),crelax), Domain.greaterThan(0))
     
         # Solve
-        M.setLogHandler(sys.stdout)            # Add logging
+        #M.setLogHandler(sys.stdout)            # Add logging
+        M.acceptedSolutionStatus(AccSolutionStatus.Anything)
         M.writeTask("App1.ptf")                # Save problem in readable format
         M.solve()
     
@@ -187,11 +262,12 @@ def master(name,n,wlist,z,Qxk_list,qxk_list, vxk_vector,yklist,mu):
             test+= (z[i]-0.5*w.dot(Qsol).dot(w) - w.dot(qsol) - csol)**2
         print("######### UB = {0}".format(test))
         print(test,objrelax.level()**2)
+        print(obj.level()**2,objrelax.level()**2)
         sol_time =  M.getSolverDoubleInfo("optimizerTime")
-        return Qsol,qsol,csol,Qsolrelax,qsolrelax,csolrelax, S
+        return Qsol,qsol,csol,Qsolrelax,qsolrelax,csolrelax,test,objrelax.level()**2, S
     
 
-main("notPSD_random5",1)
+main("PSD_random8",0.05)
 
 # if __name__ == "__main__":
 #     main(sys.argv[1])

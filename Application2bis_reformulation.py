@@ -94,12 +94,13 @@ def main(name_dimacs,name):
         tres = t.level()[0]
         vres = v.level()
         objres = 0.5*xres.dot(Q1).dot(xres) + vres + q1.dot(xres)
+        print("Min eigenvalue = {0}".format(min(np.linalg.eigvalsh(Qsol))))
         assert(abs(tres-0.5*xres.dot(Q1).dot(xres))<1E-7)
         assert(abs(PSDVar.level()[-1] - (alpha.level()[0]+beta.level()[0]))<1E-7)
         print("Upper level solution : ",x.level())
         print("Objective value =",objres)
         print("v :", v.level())
-        save(name,objres,soltime, x.level(),v.level())
+        save(name,objres,soltime, x.level())
             
 
             

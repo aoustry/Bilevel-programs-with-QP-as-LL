@@ -18,6 +18,7 @@ def save(name, value,soltime, xsol):
     
 def solve_subproblem_App2(n,Q,b,c):
     m = gp.Model("LL problem")
+    m.Params.LogToConsole = 0
     y = m.addMVar(n, lb = 0.0, ub = 1.0, name="y")
     m.addConstr(np.ones(n)@y==1)
     m.setObjective(y@(0.5*Q)@y+  b@y +c, GRB.MINIMIZE)
@@ -30,7 +31,6 @@ def main(name_dimacs,name,mu):
     f = DimacsReader("DIMACS/"+name_dimacs)
     M = f.M
     n = f.n
-
     Q1= np.load("Application2bis_data/"+name+"/bigQ1.npy")
     Q2= np.load("Application2bis_data/"+name+"/bigQ2_fix.npy")
     q1= np.load("Application2bis_data/"+name+"/q1.npy")
@@ -41,11 +41,15 @@ def main(name_dimacs,name,mu):
     assert(np.linalg.norm(M-M.T)<1E-6)
     assert(np.linalg.norm(Q1-Q1.T)<1E-6)
     assert(np.linalg.norm(Q2-Q2.T)<1E-6)
-    
-    Qxk_list, qxk_list, vxk_list,yklist,running = [],[],[],[],True
+    """Solve the restriction. If sufficient condition of GOPT is satisfied, stop"""
+    xres, cres, minvp = restriction(M,n,Q1,Q2,q1,q2,diagonalQ2x)
+    running = minvp<1e-7
+    """If not, we run the inner/outer approximation algorithm """
+    Qxk_list, qxk_list, vxk_list,yklist = [],[],[],[]
     it_count = 0
+    mu2 = mu *100
     while running:
-        x,c,xrelax,crelax,dist = master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list, np.array(vxk_list),yklist,mu)
+        x,c,xrelax,crelax,obj,obj_relax,dist = master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list, np.array(vxk_list),yklist,mu)
         Qrelax = Q2+np.diag(diagonalQ2x*xrelax)
         brelax = q2 + (M.T)@xrelax
         yrelax,valrelax = solve_subproblem_App2(n,Qrelax,brelax,crelax)
@@ -53,22 +57,79 @@ def main(name_dimacs,name,mu):
         qxk_list.append(brelax)
         vxk_list.append(valrelax-crelax)
         yklist.append(yrelax)
-
+        print("Average = {0}".format(0.5*obj+0.5*obj_relax))
         if valrelax>-1E-6 and dist<1E-6:
             running=False
+        if abs(obj-obj_relax)/abs(obj)<0.001:
+            mu = mu2
         it_count+=1
         print("Iteration number {0}".format(it_count))
     #save(name,objres,soltime, x.level(),v.level())
 
-def master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list, vxk_vector,yklist,mu):
+def restriction(M,n,Q1,Q2,q1,q2,diagonalQ2x):
+    "Solve the single level restriction"
+    with Model("App2bis") as model:
+        A = -np.eye(n)
         
-    # Create a model with n semidefinite variables od dimension d x d
+        #Upper level var
+        c = model.variable("v", 1, Domain.unbounded())
+        x = model.variable("x", n, Domain.greaterThan(0.0))
+            
+        #LL variables
+        lam = model.variable("lambda", Domain.unbounded()) #lagrangian multiplier related to the equality constraint (simplex)
+        lam2 = model.variable("lambda2", n, Domain.greaterThan(0.0)) #lagrangian multiplier related to the nonnegativity of y
+        alpha = model.variable("alpha", Domain.greaterThan(0.0))
+        beta = model.variable("beta", Domain.unbounded())
+        
+        #Vars for PSD constraint
+        PSDVar = model.variable(Domain.inPSDCone(n+1))
+        PSDVar_main = PSDVar.slice([0,0], [n,n])
+        PSDVar_vec = Var.flatten(PSDVar.slice([0,n], [n,n+1]))
+        PSDVar_offset = PSDVar.slice([n,n], [n+1,n+1])
+        #other auxiliary variables
+        t = model.variable("t", 1, Domain.unbounded()) #upper level variable
+        P1 = sqrtm(Q1) #necessary for the following constraint
+        ##t >= 0.5 x^TQ_1x iif t >= 0.5 ||P_1 x ||^2   iif (t,1, P_1x) \in RotatedCone(n+2)
+        ## This constraint is necessary saturated at the optimum, thus we have t = 0.5 x^TQ_1x
+        model.constraint(Expr.vstack(t,1, Expr.mul(P1,x)), Domain.inRotatedQCone(n+2))
+        c_and_player1_cost = Expr.add(c, Expr.add(t,Expr.dot(q1,x))) #upper level objective function
+        
+        #Objective
+        model.objective( "objfunct", ObjectiveSense.Minimize, c_and_player1_cost )
+    
+        #Simplex constraint for x
+        model.constraint( Expr.sum(x),  Domain.equalsTo(1) )
+         
+        # -v + lambda1 + 2 alpha + beta \leq 0 
+        sum_of_duals = Expr.add(lam,Expr.add(Expr.mul(2,alpha),beta))
+        model.constraint(Expr.add(Expr.mul(-1,c),sum_of_duals),Domain.lessThan(0.0))
+        
+        #Constraints to define the several parts of the PSD matrix
+        Q2x = Expr.add([Expr.mul(x.index(i),Matrix.sparse(n, n, [i], [i], [0.5*diagonalQ2x[i]])) for i in range(n)])
+        model.constraint(Expr.sub(Expr.add(Expr.add(0.5*Q2,Q2x), Expr.mul(alpha,np.eye(n))), PSDVar_main),  Domain.equalsTo(0,n,n) )
+        model.constraint(Expr.sub(Expr.add(Expr.add(0.5*q2, Expr.add(Expr.mul(0.5*M.T,x),Expr.mul(lam,0.5*np.ones(n)))),Expr.mul(lam2,0.5*A)), PSDVar_vec),  Domain.equalsTo(0,n) )
+        model.constraint(Expr.sub(Expr.add(beta, alpha), PSDVar_offset),  Domain.equalsTo(0) )
+    
+        # Solve
+        model.setLogHandler(sys.stdout)            # Add logging
+        model.writeTask("App2.ptf")                # Save problem in readable format
+        model.solve()
+        soltime =  model.getSolverDoubleInfo("optimizerTime")
+        
+        #Get results
+        xres = x.level()
+        tres = t.level()[0]
+        cres = c.level()
+        assert(abs(tres-0.5*xres.dot(Q1).dot(xres))<1E-7)
+        assert(abs(PSDVar.level()[-1] - (alpha.level()[0]+beta.level()[0]))<1E-7)
+        return xres, cres, min(np.linalg.eigvalsh(Q2+np.diag(diagonalQ2x*xres)))
+
+
+def master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list, vxk_vector,yklist,mu):
+    "Solve the master problem"
     K = len(yklist)
     with Model("App2bis") as model:
-        #y must be greater than 0
         A = -np.eye(n)
-        #b = np.zeros(n)
-        
         #Upper level var
         c = model.variable("v", 1, Domain.unbounded())
         x = model.variable("x", n, Domain.greaterThan(0.0))
@@ -146,7 +207,8 @@ def master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list, vxk_vector,yklist,mu):
     
     
         #Solve
-        model.setLogHandler(sys.stdout)            # Add logging
+        #model.setLogHandler(sys.stdout)            # Add logging
+        model.acceptedSolutionStatus(AccSolutionStatus.Anything)
         model.writeTask("App2.ptf")                # Save problem in readable format
         model.solve()
         soltime =  model.getSolverDoubleInfo("optimizerTime")
@@ -156,14 +218,9 @@ def master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list, vxk_vector,yklist,mu):
         dist = np.linalg.norm(xsol-xrelaxsol,2)**2 + (csol-crelaxsol)**2
         
         print(csol+0.5*(xsol@Q1@xsol)+q1@xsol,crelaxsol+0.5*(xrelaxsol@Q1@xrelaxsol)+q1@xrelaxsol)
-        print(dist)
-        print(eta.level())
-        return xsol,csol,xrelaxsol,crelaxsol, dist
-        
-            
+        return xsol,csol,xrelaxsol,crelaxsol,csol+0.5*(xsol@Q1@xsol)+q1@xsol,crelaxsol+0.5*(xrelaxsol@Q1@xrelaxsol)+q1@xrelaxsol, dist
+              
 
-            
-main('queen8_12.col','queen8_12_random1',1)
-# if __name__ == "__main__":
-#     main(sys.argv[1],sys.argv[2])  
+main('queen6_6.col','queen6_6_random1',0.1)
+ 
         

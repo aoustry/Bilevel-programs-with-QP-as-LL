@@ -103,6 +103,7 @@ def main(name):
         print(test,obj.level()**2)
         sol_time =  M.getSolverDoubleInfo("optimizerTime")
         save(name,p,obj.level()[0]**2,test,sol_time,Qsol,qsol,csol)
+        print("Min eigenvalue = {0}".format(min(np.linalg.eigvalsh(Qsol))))
         print("Matrix Q")
         print(Qsol)
         print("Matrix Q_ref")
@@ -115,6 +116,7 @@ def main(name):
         print("Average square error data ={0}".format(np.array([n**2 for n in noise]).sum()/p))
         print("TODO : also print error between ref and reconstructed output")
     
+
 
 if __name__ == "__main__":
     main(sys.argv[1])
