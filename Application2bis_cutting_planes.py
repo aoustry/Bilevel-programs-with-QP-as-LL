@@ -9,10 +9,11 @@ import gurobipy as gp
 from gurobipy import GRB
 import numpy as np
 import time
+import pandas as pd
 
 
 def save(name, value,soltime, itnumber, xsol):
-    f = open("Application2_data/"+name+"/cutting_planes.txt","w+")
+    f = open("output/Application2bis/"+name+"/cutting_planes.txt","w+")
     f.write("Obj: "+str(value)+"\n")
     f.write("SolTime: "+str(soltime)+"\n")
     f.write("It. number: "+str(itnumber)+"\n")
@@ -20,6 +21,8 @@ def save(name, value,soltime, itnumber, xsol):
     f.close()
 
 def main_app2(name_dimacs,name):
+    #Logs
+    ValueLogs, EpsLogs, MasterTimeLogs, LLTimeLogs = [],[],[],[]
     #Reading graph file
     f = DimacsReader("DIMACS/"+name_dimacs)
     M = f.M
@@ -52,12 +55,23 @@ def main_app2(name_dimacs,name):
     running = True
     itnumber = 0
     while running:
+        t1 = time.time()
         master.optimize()
+        mastertime = time.time() - t1
         x,v = xvar.X, vvar.X
         Q = Q2+np.diag(diagonalQ2x*x)
         b = q2 + (M.T)@x
+        t1 = time.time()
         y,val = solve_subproblem_App2(n,Q,b,v)
+        LLtime = time.time() - t1
         itnumber+=1
+        
+        
+        #Log
+        ValueLogs.append(master.objVal)
+        EpsLogs.append(val)
+        MasterTimeLogs.append(mastertime)
+        LLTimeLogs.append(LLtime)
         
         if val>-1E-6:
             running=False
@@ -67,6 +81,9 @@ def main_app2(name_dimacs,name):
             master.addConstr(vvar+coeffC@xvar+ (y@M)@xvar + q2@y + y@(0.5*Q2)@y >=0)
     soltime = time.time() - t0
     save(name, master.objVal,soltime,itnumber, x)
+    df = pd.DataFrame()
+    df['MasterObj'],df["Epsilon"],df["MasterTime"],df['LLTime'] = ValueLogs, EpsLogs, MasterTimeLogs, LLTimeLogs
+    df.to_csv("output/Application2bis/"+name+"/cutting_plane.csv")
 
 def solve_subproblem_App2(n,Q,b,v):
     m = gp.Model("LL problem")
@@ -78,4 +95,4 @@ def solve_subproblem_App2(n,Q,b,v):
     return y.X, m.objVal
 
 
-   
+main_app2('myciel4.col','myciel4_det1')  

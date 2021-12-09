@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
 import gurobipy as gp
 from gurobipy import GRB
-
 from mosek.fusion import *
-import sys
+import time,sys
 import numpy as np 
-import networkx
+import pandas as pd
 from scipy.linalg import sqrtm
 from DimacsReader import *
 
 def save(name, value,soltime, xsol):
-    f = open("Application2bis_data/"+name+"/reformulation_obj_value.txt","w+")
+    f = open("output/Application2bis/"+name+"/coupledAlgo.txt","w+")
     f.write("Obj: "+str(value)+"\n")
     f.write("SolTime: "+str(soltime)+"\n")
     f.write("Upper level solution: "+str(xsol)+"\n")
@@ -26,7 +25,9 @@ def solve_subproblem_App2(n,Q,b,c):
     m.optimize()
     return y.X, m.objVal
 
-def main(name_dimacs,name,mu):
+def main_app2(name_dimacs,name,mu):
+    #Logs
+    ValueLogRes,ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs = [],[],[],[],[]
     #Reading graph file
     f = DimacsReader("DIMACS/"+name_dimacs)
     M = f.M
@@ -42,29 +43,51 @@ def main(name_dimacs,name,mu):
     assert(np.linalg.norm(Q1-Q1.T)<1E-6)
     assert(np.linalg.norm(Q2-Q2.T)<1E-6)
     """Solve the restriction. If sufficient condition of GOPT is satisfied, stop"""
-    xres, cres, minvp = restriction(M,n,Q1,Q2,q1,q2,diagonalQ2x)
+    t0 = t1 = time.time()
+    xres, cres, minvp,obj = restriction(M,n,Q1,Q2,q1,q2,diagonalQ2x)
+    mastertime = time.time() - t1
     running = minvp<1e-7
+    ValueLogRes.append(obj)
+    ValueLogRel.append(-np.inf)
+    EpsLogs.append(0)
+    MasterTimeLogs.append(mastertime)
+    LLTimeLogs.append(0)
     """If not, we run the inner/outer approximation algorithm """
     Qxk_list, qxk_list, vxk_list,yklist = [],[],[],[]
     it_count = 0
     mu2 = mu *100
     while running:
+        t1 = time.time()
         x,c,xrelax,crelax,obj,obj_relax,dist = master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list, np.array(vxk_list),yklist,mu)
+        mastertime = time.time() - t1
+        t1 = time.time()
         Qrelax = Q2+np.diag(diagonalQ2x*xrelax)
         brelax = q2 + (M.T)@xrelax
-        yrelax,valrelax = solve_subproblem_App2(n,Qrelax,brelax,crelax)
+        yrelax,epsrel = solve_subproblem_App2(n,Qrelax,brelax,crelax)
+        LLtime = time.time() - t1
         Qxk_list.append(Qrelax)
         qxk_list.append(brelax)
-        vxk_list.append(valrelax-crelax)
+        vxk_list.append(epsrel-crelax)
         yklist.append(yrelax)
-        print("Average = {0}".format(0.5*obj+0.5*obj_relax))
-        if valrelax>-1E-6 and dist<1E-6:
+        #Logs
+        ValueLogRes.append(obj)
+        ValueLogRel.append(obj_relax)
+        EpsLogs.append(epsrel)
+        MasterTimeLogs.append(mastertime)
+        LLTimeLogs.append(LLtime)
+        print("ObjRes, ObjRel, Average = {0},{1},{2}".format(obj,obj_relax,0.5*obj+0.5*obj_relax))
+        if epsrel>-1E-6 and dist<1E-6:
             running=False
         if abs(obj-obj_relax)/abs(obj)<0.001:
             mu = mu2
         it_count+=1
         print("Iteration number {0}".format(it_count))
     #save(name,objres,soltime, x.level(),v.level())
+    soltime = time.time() - t0
+    save(name, obj,soltime, x)
+    df = pd.DataFrame()
+    df['MasterObjRes'],df['MasterObjRel'],df["Epsilon"],df["MasterTime"],df['LLTime'] = ValueLogRes,ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs
+    df.to_csv("output/Application2bis/"+name+"/coupledAlgo.csv")
 
 def restriction(M,n,Q1,Q2,q1,q2,diagonalQ2x):
     "Solve the single level restriction"
@@ -111,18 +134,16 @@ def restriction(M,n,Q1,Q2,q1,q2,diagonalQ2x):
         model.constraint(Expr.sub(Expr.add(beta, alpha), PSDVar_offset),  Domain.equalsTo(0) )
     
         # Solve
-        model.setLogHandler(sys.stdout)            # Add logging
-        model.writeTask("App2.ptf")                # Save problem in readable format
         model.solve()
         soltime =  model.getSolverDoubleInfo("optimizerTime")
         
         #Get results
         xres = x.level()
         tres = t.level()[0]
-        cres = c.level()
+        cres = c.level()[0]
         assert(abs(tres-0.5*xres.dot(Q1).dot(xres))<1E-7)
         assert(abs(PSDVar.level()[-1] - (alpha.level()[0]+beta.level()[0]))<1E-7)
-        return xres, cres, min(np.linalg.eigvalsh(Q2+np.diag(diagonalQ2x*xres)))
+        return xres, cres, min(np.linalg.eigvalsh(Q2+np.diag(diagonalQ2x*xres))),cres + tres + xres.dot(q1)
 
 
 def master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list, vxk_vector,yklist,mu):
@@ -160,7 +181,6 @@ def master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list, vxk_vector,yklist,mu):
         model.constraint(Expr.vstack(trelax,1, Expr.mul(P1,xrelax)), Domain.inRotatedQCone(n+2))
         c_and_player1_cost = Expr.add(c, Expr.add(t,Expr.dot(q1,x))) #upper level objective function
         c_and_player1_cost_relax = Expr.add(crelax, Expr.add(trelax,Expr.dot(q1,xrelax))) #upper level objective function
-        
         
         #Objective
         model.constraint( Expr.vstack(1.0,Expr.vstack(distance_term.index(0), Expr.sub(x, xrelax))), Domain.inRotatedQCone() ) 
@@ -214,13 +234,11 @@ def master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list, vxk_vector,yklist,mu):
         soltime =  model.getSolverDoubleInfo("optimizerTime")
         
         #Get results
-        xsol,csol,xrelaxsol,crelaxsol = x.level(), c.level(),xrelax.level(),crelax.level()
+        xsol,csol,xrelaxsol,crelaxsol = x.level(), c.level()[0],xrelax.level(),crelax.level()[0]
         dist = np.linalg.norm(xsol-xrelaxsol,2)**2 + (csol-crelaxsol)**2
-        
-        print(csol+0.5*(xsol@Q1@xsol)+q1@xsol,crelaxsol+0.5*(xrelaxsol@Q1@xrelaxsol)+q1@xrelaxsol)
+        #print(csol+0.5*(xsol@Q1@xsol)+q1@xsol,crelaxsol+0.5*(xrelaxsol@Q1@xrelaxsol)+q1@xrelaxsol)
+        print("Distance term (check) = {0}".format(dist))
         return xsol,csol,xrelaxsol,crelaxsol,csol+0.5*(xsol@Q1@xsol)+q1@xsol,crelaxsol+0.5*(xrelaxsol@Q1@xrelaxsol)+q1@xrelaxsol, dist
               
 
-main('queen6_6.col','queen6_6_random1',0.1)
- 
         

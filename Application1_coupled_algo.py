@@ -6,7 +6,7 @@ Created on Mon Dec  6 15:09:25 2021
 """
 
 
-
+import pandas as pd
 from mosek.fusion import *
 import gurobipy as gp
 from gurobipy import GRB
@@ -14,10 +14,9 @@ import sys
 import numpy as np
 import time
 
-def save(name, p,value,value_tested, soltime, bigQ, q,c):
-    f = open("Application1_data/"+name+"/coupledAlgo_obj_value.txt","w+")
-    f.write("Obj value returned by the solver: "+str(value)+"\n")
-    f.write("Obj value computed with solution variables: "+str(value_tested)+"\n")
+def save(name, p,value, soltime, bigQ, q,c):
+    f = open("output/Application1/"+name+"/coupledAlgo.txt","w+")
+    f.write("Obj: "+str(value)+"\n")
     f.write("Average LSE = {0}".format(value/p))
     f.write("SolTime: "+str(soltime)+"\n")
     f.write("Q matrix recovered: " +str(bigQ) +"\n")
@@ -36,7 +35,9 @@ def solve_subproblem_App1(n,Q,q,c):
     m.optimize()
     return y.X, m.objVal
 
-def main(name,mu):
+def main_app1(name,mu):
+    #Logs
+    ValueLogRes,ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs = [],[],[],[],[]
     #Loading data
     Qref = np.load("Application1_data/"+name+"/bigQref.npy")
     qref = np.load("Application1_data/"+name+"/qref.npy")
@@ -47,27 +48,48 @@ def main(name,mu):
     noiseless_z=0.5 *np.array([ w.dot(Qref).dot(w) for w in wlist]) + wlist.dot(qref) + cref
     it_count = 0
     mu2 = 100*mu
+    n = len(qref)
     """Solve the restriction. If sufficient condition of GOPT is satisfied, stop"""
-    Qsol,qsol,csol,minvp=restriction(name,n,wlist,z)
+    t0 = t1 = time.time()
+    Qsol,qsol,csol,minvp,obj=restriction(name,n,wlist,z)
+    mastertime = time.time() - t1
     running = minvp<1e-7
-    print(minvp)
+    ValueLogRes.append(obj)
+    ValueLogRel.append(-np.inf)
+    EpsLogs.append(0)
+    MasterTimeLogs.append(mastertime)
+    LLTimeLogs.append(0)
     """If not, we run the inner/outer approximation algorithm """
     Qxk_list, qxk_list, vxk_list,yklist = [],[],[],[]
     while running:
-        print(mu)
+        t1 = time.time()
         Qsol,qsol,csol,Qsolrelax,qsolrelax,csolrelax,obj,obj_relax,dist = master(name,n,wlist,z,Qxk_list,qxk_list,np.array(vxk_list),yklist,mu)
-        yrelax,valrelax = solve_subproblem_App1(n,Qsolrelax,qsolrelax,csolrelax)
+        mastertime = time.time() - t1
+        t1 = time.time()
+        yrelax,epsrel = solve_subproblem_App1(n,Qsolrelax,qsolrelax,csolrelax)
+        LLtime = time.time() - t1
         Qxk_list.append(Qsolrelax)
         qxk_list.append(qsolrelax)
-        vxk_list.append(valrelax-csolrelax)
+        vxk_list.append(epsrel-csolrelax)
         yklist.append(yrelax)
+        #Logs
+        ValueLogRes.append(obj)
+        ValueLogRel.append(obj_relax)
+        EpsLogs.append(epsrel)
+        MasterTimeLogs.append(mastertime)
+        LLTimeLogs.append(LLtime)
         if abs(obj-obj_relax)/abs(obj)<0.001:
             mu = mu2
-        if valrelax>-1E-6 and dist<1E-6:
+        if epsrel>-1E-6 and dist<1E-6:
             running=False
         it_count+=1
+        print("ObjRes, ObjRel, Average = {0},{1},{2}".format(obj,obj_relax,0.5*obj+0.5*obj_relax))
         print("Iteration number {0}".format(it_count))
-    #save(name,len(z),objrelax.level()[0]**2,test,sol_time,Qsol,qsol,csol)
+    soltime = time.time() - t0
+    save(name,len(z),obj_relax,soltime,Qsol,qsol,csol)
+    df = pd.DataFrame()
+    df['MasterObjRes'],df['MasterObjRel'],df["Epsilon"],df["MasterTime"],df['LLTime'] = ValueLogRes,ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs
+    df.to_csv("output/Application1/"+name+"/coupledAlgo.csv")
     
 
 def restriction(name,n,wlist,z):
@@ -138,8 +160,7 @@ def restriction(name,n,wlist,z):
             w = wlist[i]
             test+= (z[i]-0.5*w.dot(Qsol).dot(w) - w.dot(qsol) - csol)**2
         sol_time =  M.getSolverDoubleInfo("optimizerTime")
-        save(name,p,obj.level()[0]**2,test,sol_time,Qsol,qsol,csol)
-        return Qsol,qsol,csol,min(np.linalg.eigvalsh(Qsol))
+        return Qsol,qsol,csol,min(np.linalg.eigvalsh(Qsol)),obj.level()[0]**2
 
 
 def master(name,n,wlist,z,Qxk_list,qxk_list, vxk_vector,yklist,mu):
@@ -180,7 +201,6 @@ def master(name,n,wlist,z,Qxk_list,qxk_list, vxk_vector,yklist,mu):
         PSDVar_main = PSDVar.slice([0,0], [n,n]) #we take the first submatrix n x n in each component of the sum in (27) i.e. 0.5*Q, 0_n, alpha*I_n
         PSDVar_vec = Var.flatten(PSDVar.slice([0,n], [n,n+1])) #we take the second submatrix n x 1 i.e. 0.5*q, \sum_r(lambda_r*A)
         PSDVar_offset = PSDVar.slice([n,n], [n+1,n+1])   #we take the third submatrix 1 x 1 i.e. \beta, alpha*1
-        
                 
         #Objective
         deg0term_obj = Expr.mul(c,np.ones(p))
@@ -244,8 +264,8 @@ def master(name,n,wlist,z,Qxk_list,qxk_list, vxk_vector,yklist,mu):
         M.solve()
     
         #Get results
-        print("Objective (relax var) value ={0}".format(objrelax.level()**2))
-        print("Distance term (MOSEK) = {0}".format(np.sum(distance_term.level())))
+        #print("Objective (relax var) value ={0}".format(objrelax.level()**2))
+        #print("Distance term (MOSEK) = {0}".format(np.sum(distance_term.level())))
         
         test = 0
         Qsol = Q.level().reshape(n,n)
@@ -260,87 +280,10 @@ def master(name,n,wlist,z,Qxk_list,qxk_list, vxk_vector,yklist,mu):
         for i in range(p):
             w = wlist[i]
             test+= (z[i]-0.5*w.dot(Qsol).dot(w) - w.dot(qsol) - csol)**2
-        print("######### UB = {0}".format(test))
-        print(test,objrelax.level()**2)
-        print(obj.level()**2,objrelax.level()**2)
+        # print("######### UB = {0}".format(test))
+        # print(test,objrelax.level()**2)
+        # print(obj.level()**2,objrelax.level()**2)
         sol_time =  M.getSolverDoubleInfo("optimizerTime")
-        return Qsol,qsol,csol,Qsolrelax,qsolrelax,csolrelax,test,objrelax.level()**2, S
+        return Qsol,qsol,csol,Qsolrelax,qsolrelax,csolrelax,test,objrelax.level()[0]**2, S
     
 
-main("PSD_random8",0.05)
-
-# if __name__ == "__main__":
-#     main(sys.argv[1])
-    # # Sample input data
-    # n = 5
-    # #asym = np.array([[3.7,-0.2,0,1,3],[2,2,1,0,0],[0,0,3,1,2],[1,0,0.4,5,2],[1.2,0,0.4,-1,3]])
-    # asym = 5*np.random.rand(n,n)
-    # Qref = 0.5*(asym + asym.transpose())
-    # #qref = np.array([-2.3,-2,1,2,1])
-    # qref = 3*np.random.rand(n)
-    # #cref = 2
-    # cref= 2*np.random.rand()
-    # sigma = 0.3
-    # p = 5000
-    # wlist = np.random.rand(p,n)
-    # noise = np.random.normal(loc = 0, scale = sigma, size = p)
-    # noiseless_z=0.5 *np.array([ w.dot(Qref).dot(w) for w in wlist]) + wlist.dot(qref) + cref
-    # print(noiseless_z.min())
-    # z = noiseless_z + noise
-    # wlist_square_flattened = np.array([(w.reshape(n,1).dot(w.reshape(1,n))).reshape(n**2) for w in wlist]) 
-    # #for each vector w, we create a matrix n x n (given by w^T * w) and then a vector n**2
-    
-    # #Definition of the LL polytope : [0,1]^n box
-    # A = np.concatenate([np.eye(n),-np.eye(n)])
-    # b = np.concatenate([np.ones(n),np.zeros(n)])
-    # rho = np.sqrt(n)
-    
-    # #Write the .dat file
-    # moment=time.strftime("%Y-%b-%d__%H_%M_%S",time.localtime()) #to have different .dat files for each python run
-    # f = open("./instance"+moment+".dat","w")
-    # f.write("param n := %d;\n"%n)
-    # f.write("param p_max := %d;\n"%p)
-    # f.write("param r_dim := 0;\n")
-    # f.write("\nparam Q_ref :")
-    # for i in range(n):
-    #     f.write(" %d "%(i+1))
-    # f.write(":=\n")
-    # for i in range(n):
-    #     for j in range(n):
-    #         if j==0:
-    #             f.write("   %d "%(i+1))
-    #         f.write("%f "%Qref[i,j])
-    #         if j==(n-1):
-    #             if i==(n-1):
-    #                 f.write(";")
-    #             f.write("\n")
-    
-    # f.write("\nparam q_ref := ")
-    # for i in range(n):
-    #     f.write("%d "%(i+1))
-    #     f.write("%f "%qref[i])
-    # f.write(";\n\nparam c_ref := %f ;\n\n"%cref)
-    # f.write("\nparam w:")
-    # for i in range(n):
-    #     f.write(" %d "%(i+1))
-    # f.write(":=\n")
-    # for i in range(p):
-    #     for j in range(n):
-    #         if j==0:
-    #             f.write("   %d "%(i+1))
-    #         f.write("%f "%wlist[i,j])
-    #         if j==(n-1):
-    #             if i==(p-1):
-    #                 f.write(";")
-    #             f.write("\n")
-    # f.write("\nparam epsilon := ")
-    # for i in range(p):
-    #     f.write("%d "%(i+1))
-    #     f.write("%f "%noise[i])
-    # f.write(";\n")
-    # f.write("\nparam z := ")
-    # for i in range(p):
-    #     f.write("%d "%(i+1))
-    #     f.write("%f "%z[i])
-    # f.write(";")
-    # f.close()

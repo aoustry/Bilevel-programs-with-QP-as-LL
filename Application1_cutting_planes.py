@@ -10,10 +10,11 @@ from gurobipy import GRB
 import numpy as np
 import time
 from itertools import combinations
+import pandas as pd
 
 
 def save(name, p,value, soltime,itnumber, bigQ, q,c):
-    f = open("Application1_data/"+name+"/cutting_plane.txt","w+")
+    f = open("output/Application1/"+name+"/cutting_plane.txt","w+")
     f.write("Obj value returned by the CP solver: "+str(value)+"\n")
     f.write("Average LSE = {0}".format(value/p))
     f.write("SolTime: "+str(soltime)+"\n")
@@ -24,6 +25,8 @@ def save(name, p,value, soltime,itnumber, bigQ, q,c):
     f.close()
 
 def main_app1(name):
+    #Logs
+    ValueLogs, EpsLogs, MasterTimeLogs, LLTimeLogs = [],[],[],[]
     #Loading data
     wlist = np.load("Application1_data/"+name+"/w.npy")
     p,n = wlist.shape
@@ -41,11 +44,20 @@ def main_app1(name):
     master.setObjective(spread@spread, GRB.MINIMIZE)
     running, itnumber = True,0
     while running:
+        t1 = time.time()
         master.optimize()
+        mastertime = time.time() - t1
         flattenedQ,q,c = flattenedQvar.X, qvar.X, cvar.X
         Q = flattenedQ.reshape((n,n))
         itnumber+=1
+        t1 = time.time()
         y,val = solve_subproblem_App1(n,Q,q,c)
+        LLtime = time.time() - t1
+        #Log
+        ValueLogs.append(master.objVal)
+        EpsLogs.append(val)
+        MasterTimeLogs.append(mastertime)
+        LLTimeLogs.append(LLtime)
         if val>-1E-6:
             running=False
         else:
@@ -53,6 +65,9 @@ def main_app1(name):
             master.addConstr(0.5*Y@flattenedQvar + y@qvar + cvar >=0)
     soltime = time.time() - t0
     save(name, p,master.objVal, soltime, itnumber,flattenedQ, q,c)
+    df = pd.DataFrame()
+    df['MasterObj'],df["Epsilon"],df["MasterTime"],df['LLTime'] = ValueLogs, EpsLogs, MasterTimeLogs, LLTimeLogs
+    df.to_csv("output/Application1/"+name+"/cutting_plane.csv")
 
 def solve_subproblem_App1(n,Q,q,c):
     m = gp.Model("LL problem")
@@ -64,4 +79,3 @@ def solve_subproblem_App1(n,Q,q,c):
     return y.X, m.objVal
 
 
-   
