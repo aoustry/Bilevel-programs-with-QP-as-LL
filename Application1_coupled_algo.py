@@ -86,7 +86,7 @@ def main_app1(name,mu):
         print("ObjRes, ObjRel, Average = {0},{1},{2}".format(obj,obj_relax,0.5*obj+0.5*obj_relax))
         print("Iteration number {0}".format(it_count))
     soltime = time.time() - t0
-    save(name,len(z),obj_relax,soltime,Qsol,qsol,csol)
+    save(name,len(z),obj,soltime,Qsol,qsol,csol)
     df = pd.DataFrame()
     df['MasterObjRes'],df['MasterObjRel'],df["Epsilon"],df["MasterTime"],df['LLTime'] = ValueLogRes,ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs
     df.to_csv("output/Application1/"+name+"/coupledAlgo.csv")
