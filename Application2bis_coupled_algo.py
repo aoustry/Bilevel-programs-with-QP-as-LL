@@ -45,6 +45,7 @@ def main_app2(name_dimacs,name,mu):
     """Solve the restriction. If sufficient condition of GOPT is satisfied, stop"""
     t0 = t1 = time.time()
     xres, cres, minvp,obj = restriction(M,n,Q1,Q2,q1,q2,diagonalQ2x)
+    x = xres
     mastertime = time.time() - t1
     running = minvp<1e-7
     ValueLogRes.append(obj)
