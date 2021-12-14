@@ -14,8 +14,9 @@ import sys
 import numpy as np
 import time
 
-def save(name, p,value, soltime, bigQ, q,c):
+def save(name,finished, p,value, soltime, bigQ, q,c):
     f = open("output/Application1/"+name+"/coupledAlgo.txt","w+")
+    f.write('Finished before TL = {0}'.format(finished))
     f.write("Obj: "+str(value)+"\n")
     f.write("Average LSE = {0}".format(value/p))
     f.write("SolTime: "+str(soltime)+"\n")
@@ -25,30 +26,26 @@ def save(name, p,value, soltime, bigQ, q,c):
     f.close()
     
     
-def solve_subproblem_App1(n,Q,q,c):
+def solve_subproblem_App1(n,Q,q,c,tl):
     m = gp.Model("LL problem")
     m.Params.LogToConsole = 0
     y = m.addMVar(n, lb = 0.0, ub = 1.0, name="y")
     Qtimeshalf = 0.5*Q
     m.setObjective(y@Qtimeshalf@y+  q@y +c, GRB.MINIMIZE)
     m.setParam('NonConvex', 2)
+    m.setParam('TimeLimit', tl)
     m.optimize()
     return y.X, m.objVal
 
-def main_app1(name,mu):
+def main_app1(name,mu,timelimit = 18000):
     #Logs
     ValueLogRes,ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs = [],[],[],[],[]
     #Loading data
-    Qref = np.load("Application1_data/"+name+"/bigQref.npy")
-    qref = np.load("Application1_data/"+name+"/qref.npy")
-    cref = float(np.load("Application1_data/"+name+"/cref.npy"))
     wlist = np.load("Application1_data/"+name+"/w.npy")
-    noise = np.load("Application1_data/"+name+"/noise.npy")
+    n = wlist.shape[1]
     z = np.load("Application1_data/"+name+"/z.npy")
-    noiseless_z=0.5 *np.array([ w.dot(Qref).dot(w) for w in wlist]) + wlist.dot(qref) + cref
     it_count = 0
     mu2 = 100*mu
-    n = len(qref)
     """Solve the restriction. If sufficient condition of GOPT is satisfied, stop"""
     t0 = t1 = time.time()
     Qsol,qsol,csol,minvp,obj=restriction(name,n,wlist,z)
@@ -61,12 +58,13 @@ def main_app1(name,mu):
     LLTimeLogs.append(0)
     """If not, we run the inner/outer approximation algorithm """
     Qxk_list, qxk_list, vxk_list,yklist = [],[],[],[]
-    while running:
+    while running and (time.time()-t0<timelimit):
         t1 = time.time()
         Qsol,qsol,csol,Qsolrelax,qsolrelax,csolrelax,obj,obj_relax,dist = master(name,n,wlist,z,Qxk_list,qxk_list,np.array(vxk_list),yklist,mu)
         mastertime = time.time() - t1
         t1 = time.time()
-        yrelax,epsrel = solve_subproblem_App1(n,Qsolrelax,qsolrelax,csolrelax)
+        tl = 10+max(0,timelimit-(t1-t0))
+        yrelax,epsrel = solve_subproblem_App1(n,Qsolrelax,qsolrelax,csolrelax,tl)
         LLtime = time.time() - t1
         Qxk_list.append(Qsolrelax)
         qxk_list.append(qsolrelax)
@@ -86,7 +84,7 @@ def main_app1(name,mu):
         print("ObjRes, ObjRel, Average = {0},{1},{2}".format(obj,obj_relax,0.5*obj+0.5*obj_relax))
         print("Iteration number {0}".format(it_count))
     soltime = time.time() - t0
-    save(name,len(z),obj,soltime,Qsol,qsol,csol)
+    save(name,not(running),len(z),obj,soltime,Qsol,qsol,csol)
     df = pd.DataFrame()
     df['MasterObjRes'],df['MasterObjRel'],df["Epsilon"],df["MasterTime"],df['LLTime'] = ValueLogRes,ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs
     df.to_csv("output/Application1/"+name+"/coupledAlgo.csv")

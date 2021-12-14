@@ -12,17 +12,18 @@ import time
 import pandas as pd
 
 
-def save(name, value,soltime, itnumber, xsol):
+def save(name, finished, value,soltime, itnumber, xsol):
     f = open("output/Application2bis/"+name+"/cutting_planes.txt","w+")
+    f.write('Finished before TL = {0}'.format(finished))
     f.write("Obj: "+str(value)+"\n")
     f.write("SolTime: "+str(soltime)+"\n")
     f.write("It. number: "+str(itnumber)+"\n")
     f.write("Upper level solution: "+str(xsol)+"\n")
     f.close()
 
-def main_app2(name_dimacs,name):
+def main_app2(name_dimacs,name, timelimit=18000):
     #Logs
-    ValueLogs, EpsLogs, MasterTimeLogs, LLTimeLogs = [],[],[],[]
+    UpperBoundsLogs,LowerBoundsLogs, EpsLogs, MasterTimeLogs, LLTimeLogs = [],[],[],[],[]
     #Reading graph file
     f = DimacsReader("DIMACS/"+name_dimacs)
     M = f.M
@@ -54,7 +55,7 @@ def main_app2(name_dimacs,name):
     master.addConstr(vvar+coeffC@xvar+ (y@M)@xvar + q2@y + y@(0.5*Q2)@y >=0)
     running = True
     itnumber = 0
-    while running:
+    while running and (time.time()-t0<timelimit):
         t1 = time.time()
         master.optimize()
         mastertime = time.time() - t1
@@ -62,13 +63,15 @@ def main_app2(name_dimacs,name):
         Q = Q2+np.diag(diagonalQ2x*x)
         b = q2 + (M.T)@x
         t1 = time.time()
-        y,val = solve_subproblem_App2(n,Q,b,v)
+        tl = 10+max(0,timelimit-(t1-t0))
+        y,val = solve_subproblem_App2(n,Q,b,v,tl)
         LLtime = time.time() - t1
         itnumber+=1
         
         
         #Log
-        ValueLogs.append(master.objVal)
+        UpperBoundsLogs.append(master.objVal+max(0,-val))
+        LowerBoundsLogs.append(master.objVal)
         EpsLogs.append(val)
         MasterTimeLogs.append(mastertime)
         LLTimeLogs.append(LLtime)
@@ -80,17 +83,18 @@ def main_app2(name_dimacs,name):
             coeffC = np.array([0.5*Y[i,i] * diagonalQ2x[i] for i in range(n)])
             master.addConstr(vvar+coeffC@xvar+ (y@M)@xvar + q2@y + y@(0.5*Q2)@y >=0)
     soltime = time.time() - t0
-    save(name, master.objVal,soltime,itnumber, x)
+    save(name,not(running), master.objVal,soltime,itnumber, x)
     df = pd.DataFrame()
-    df['MasterObj'],df["Epsilon"],df["MasterTime"],df['LLTime'] = ValueLogs, EpsLogs, MasterTimeLogs, LLTimeLogs
+    df['UB'],df['LB'],df["Epsilon"],df["MasterTime"],df['LLTime'] = UpperBoundsLogs, LowerBoundsLogs, EpsLogs, MasterTimeLogs, LLTimeLogs
     df.to_csv("output/Application2bis/"+name+"/cutting_plane.csv")
 
-def solve_subproblem_App2(n,Q,b,v):
+def solve_subproblem_App2(n,Q,b,v,tl):
     m = gp.Model("LL problem")
     y = m.addMVar(n, lb = 0.0, ub = 1.0, name="y")
     m.addConstr(np.ones(n)@y==1)
     m.setObjective(y@(0.5*Q)@y+  b@y +v, GRB.MINIMIZE)
     m.setParam('NonConvex', 2)
+    m.setParam('TimeLimit', tl)
     m.optimize()
     return y.X, m.objVal
 

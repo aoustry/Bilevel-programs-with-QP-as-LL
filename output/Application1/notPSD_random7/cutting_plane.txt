@@ -1,5 +1,5 @@
-Obj value returned by the CP solver: 647.084134030529
-Average LSE = 0.16177103350763225SolTime: 115.53013372421265
+Finished before TL = TrueObj value returned by the CP solver: 647.084134030529
+Average LSE = 0.16177103350763225SolTime: 73.7657630443573
 It. number: 61
 Q matrix recovered: [ 1.15351846e+00  9.48413870e-01  3.69017668e-01  1.00924963e+00
  -4.79083812e-01  9.23745668e-01 -7.15740885e-01 -2.79679533e-02

@@ -8,24 +8,26 @@ import pandas as pd
 from scipy.linalg import sqrtm
 from DimacsReader import *
 
-def save(name, value,soltime, xsol):
+def save(name,finished, value,soltime, xsol):
     f = open("output/Application2bis/"+name+"/coupledAlgo.txt","w+")
+    f.write('Finished before TL = {0}'.format(finished))
     f.write("Obj: "+str(value)+"\n")
     f.write("SolTime: "+str(soltime)+"\n")
     f.write("Upper level solution: "+str(xsol)+"\n")
     f.close()
     
-def solve_subproblem_App2(n,Q,b,c):
+def solve_subproblem_App2(n,Q,b,c,tl):
     m = gp.Model("LL problem")
     m.Params.LogToConsole = 0
     y = m.addMVar(n, lb = 0.0, ub = 1.0, name="y")
     m.addConstr(np.ones(n)@y==1)
     m.setObjective(y@(0.5*Q)@y+  b@y +c, GRB.MINIMIZE)
     m.setParam('NonConvex', 2)
+    m.setParam('TimeLimit', tl)
     m.optimize()
     return y.X, m.objVal
 
-def main_app2(name_dimacs,name,mu):
+def main_app2(name_dimacs,name,mu,timelimit=18000):
     #Logs
     ValueLogRes,ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs = [],[],[],[],[]
     #Reading graph file
@@ -57,14 +59,15 @@ def main_app2(name_dimacs,name,mu):
     Qxk_list, qxk_list, vxk_list,yklist = [],[],[],[]
     it_count = 0
     mu2 = mu *100
-    while running:
+    while running and (time.time()-t0<timelimit):
         t1 = time.time()
         x,c,xrelax,crelax,obj,obj_relax,dist = master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list, np.array(vxk_list),yklist,mu)
         mastertime = time.time() - t1
         t1 = time.time()
         Qrelax = Q2+np.diag(diagonalQ2x*xrelax)
         brelax = q2 + (M.T)@xrelax
-        yrelax,epsrel = solve_subproblem_App2(n,Qrelax,brelax,crelax)
+        tl = 10+max(0,timelimit-(t1-t0))
+        yrelax,epsrel = solve_subproblem_App2(n,Qrelax,brelax,crelax,tl)
         LLtime = time.time() - t1
         Qxk_list.append(Qrelax)
         qxk_list.append(brelax)
@@ -83,9 +86,9 @@ def main_app2(name_dimacs,name,mu):
             mu = mu2
         it_count+=1
         print("Iteration number {0}".format(it_count))
-    #save(name,objres,soltime, x.level(),v.level())
+    
     soltime = time.time() - t0
-    save(name, obj,soltime, x)
+    save(name,not(running), obj,soltime, x)
     df = pd.DataFrame()
     df['MasterObjRes'],df['MasterObjRel'],df["Epsilon"],df["MasterTime"],df['LLTime'] = ValueLogRes,ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs
     df.to_csv("output/Application2bis/"+name+"/coupledAlgo.csv")
