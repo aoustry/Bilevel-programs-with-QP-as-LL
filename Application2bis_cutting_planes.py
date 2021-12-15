@@ -98,5 +98,3 @@ def solve_subproblem_App2(n,Q,b,v,tl):
     m.optimize()
     return y.X, m.objVal
 
-
-main_app2('myciel4.col','myciel4_det1')  
