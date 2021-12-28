@@ -10,7 +10,7 @@ import numpy as np
 
 def plot_convergence_single(name):
     
-    file = open("epsilon/"+name+".txt")
+    file = open("../epsilon/"+name+".txt")
     array = []
     for line in file.readlines():
         array.append(float(line))
@@ -20,13 +20,13 @@ def plot_convergence_single(name):
     plt.title(name +", convergence of the feasibility error.")
     plt.xlabel("Iterations")
     plt.ylabel(r'Feasibility error $\epsilon_k$')
-    plt.savefig("plots/"+name+".png")
+    plt.savefig(name+".png")
     plt.close()
     
 def plot_convergence_app(app_idx,instance_liste,target):
     m = 0
     for name in instance_liste:
-        file = open("epsilon/"+name+".txt")
+        file = open("../epsilon/"+name+".txt")
         array = []
         for line in file.readlines():
             array.append(float(line))
