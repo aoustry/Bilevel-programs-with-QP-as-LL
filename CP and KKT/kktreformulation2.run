@@ -1,9 +1,0 @@
-reset;
-
-model ./kktreformulation2.mod;
-data ./instances2/bis/queen9random.dat;
-option solver couenne;
-#option baron_options "prfreq=10 outlev=1 maxtime = -1";
-solve;
-display v, x, y;
-display stationarity,nonnegativity;
