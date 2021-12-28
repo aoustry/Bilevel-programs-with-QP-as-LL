@@ -11,7 +11,7 @@ import os
 for i in range(1,10):
     name = "PSD_random"+str(i)
     os.system("python3 Application1_reformulation.py "+name)
-    name = "nonPSD_random"+str(i)
+    name = "notPSD_random"+str(i)
     os.system("python3 Application1_reformulation.py "+name)
 
 #Call application 2
