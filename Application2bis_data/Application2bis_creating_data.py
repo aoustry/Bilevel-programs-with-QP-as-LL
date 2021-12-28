@@ -1,15 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Feb  6 13:45:12 2021
-
-@author: aoust
-"""
-
-# -*- coding: utf-8 -*-
-"""
 Created on Sat Dec 26 10:38:36 2020
 
-@author: aoust
+This file is needed to generate the instances used to test Application 2 (bis).
 """
 import numpy as np
 from DimacsReader import *
