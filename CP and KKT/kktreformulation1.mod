@@ -26,15 +26,18 @@ var c;
 var y {i in N}>=0, <=1;
 var lambda1 {i in N} >=0;
 var lambda2 {i in N} >=0;
+var slack {i in N}; #we need this variable since Gurobi cannot handle nonlinear nonquadratic constraints
 
 #obj. function (least-squares error)
 minimize LSE : sum{p in P} (z[p]-sum{i in N}(0.5*sum{j in N}(w[p,i]*w[p,j]*Q[i,j])) - sum{i in N}(q[i]*w[p,i])-c)^2;
 
 #constraints
 s.t. symmetry {i in N, j in N: i<j}: Q[i,j] = Q[j,i];
-s.t. nonnegativity: sum{i in N}(0.5*sum{j in N}(y[i]*y[j]*Q[i,j])) + sum{i in N}(q[i]*y[i])+c >= 0;
+s.t. nonnegativity: sum{i in N}(0.5*y[i]*slack[i]) + sum{i in N}(q[i]*y[i])+c >= 0;
 s.t. stationarity {i in N}: sum{j in N}(Q[i,j]*y[j])+q[i] - lambda1[i] +lambda2[i]=0;
 s.t. complementary1 {i in N}: lambda1[i]*y[i] = 0;
 s.t. complementary2 {i in N}: lambda2[i]*(y[i]-1) = 0;
+s.t. definition_of_slack {i in N}: slack[i] = sum{j in N}(Q[i,j]*y[j]);
+
  
 
