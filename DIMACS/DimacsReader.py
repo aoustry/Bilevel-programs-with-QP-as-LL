@@ -2,7 +2,7 @@
 """
 Created on Fri Dec 11 18:02:36 2020
 
-@author: aoust
+File to reed the DIMACS instances. 
 """
 import numpy as np
 
