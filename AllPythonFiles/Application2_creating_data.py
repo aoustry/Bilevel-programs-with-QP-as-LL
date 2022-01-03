@@ -14,8 +14,8 @@ def create_files(name,n,Q1,Q2,q1,q2,M,diagonalQ2x):
    #Reading graph file
     
     #Write the .dat file
-    os.mkdir("Application2_data/"+name)
-    f = open("Application2_data/"+name+"/instance.dat","w")
+    os.mkdir("../Application2_data/"+name)
+    f = open("../Application2_data/"+name+"/instance.dat","w")
     f.write("param n := %d;\n"%n)
     f.write("\nparam M :")
     for i in range(n):
@@ -79,19 +79,19 @@ def create_files(name,n,Q1,Q2,q1,q2,M,diagonalQ2x):
     f.close()
     
     #Write the numpy files 
-    np.save("Application2_data/"+name+"/bigQ1",Q1)
-    np.save("Application2_data/"+name+"/bigQ2_fix",Q2)
-    np.save("Application2_data/"+name+"/q1",q1)
-    np.save("Application2_data/"+name+"/q2_fix",q2)
-    np.save("Application2_data/"+name+"/M",M)
-    np.save("Application2_data/"+name+"/diagQ2x",diagonalQ2x)
+    np.save("../Application2_data/"+name+"/bigQ1",Q1)
+    np.save("../Application2_data/"+name+"/bigQ2_fix",Q2)
+    np.save("../Application2_data/"+name+"/q1",q1)
+    np.save("../Application2_data/"+name+"/q2_fix",q2)
+    np.save("../Application2_data/"+name+"/M",M)
+    np.save("../Application2_data/"+name+"/diagQ2x",diagonalQ2x)
     
     
 
 def create_files_deterministic_type1(name):
     """Create the files for an instance linked to a DIMACS graph called "name"
     The construction of this instance is deterministic"""
-    f = DimacsReader("DIMACS/{0}.col".format(name))
+    f = DimacsReader("../DIMACS/{0}.col".format(name))
     M = f.M
     n = f.n
     
@@ -118,7 +118,7 @@ def create_files_deterministic_type1(name):
 def create_files_random(name,nb):
     """Create the files for an instance linked to a DIMACS graph called "name"
     The construction of this instance is random"""
-    f = DimacsReader("DIMACS/{0}.col".format(name))
+    f = DimacsReader("../DIMACS/{0}.col".format(name))
     M = f.M
     n = f.n
     
