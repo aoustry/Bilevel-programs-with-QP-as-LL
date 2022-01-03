@@ -53,7 +53,7 @@ repeat{
     let v_feas := - 0.5*sum{i in V}(sum{j in V}(y[i]*y[j]*Q2_fix[i,j]))-0.5*sum{i in V}(y[i]*y[i]*diagQ2[i]*x[i])-sum{i in V}(q2_fix[i]*y[i])-sum{i in V}(sum{j in V}(x[i]*y[j]*M[j,i])) ;
     let UB := v_feas + 0.5*sum{i in V}(sum{j in V}(x[i]*x[j]*Q1[i,j]))+ sum{i in V}(q1[i]*x[i]);
     display UB;
-    print(obj_inner+v)>> ./epsilon/jeanpsd.txt; #store the feasibility error at each iteration
+    print(obj_inner+v)>> ../epsilon/jeanpsd.txt; #store the feasibility error at each iteration
 
     if contcuts == cuts then
     {
