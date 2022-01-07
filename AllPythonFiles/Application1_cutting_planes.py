@@ -33,6 +33,7 @@ def main_app1(name,timelimit=18000):
     z = np.load("../Application1_data/"+name+"/z.npy")
     wlist_square_flattened = np.array([(w.reshape(n,1).dot(w.reshape(1,n))).reshape(n**2) for w in wlist]) 
     
+    print("We are solving instance:", name)
     t0 = time.time()
     master = gp.Model("Master problem")
     #variables
