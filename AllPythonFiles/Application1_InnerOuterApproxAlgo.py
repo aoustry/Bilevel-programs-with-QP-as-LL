@@ -6,14 +6,14 @@ import sys
 import numpy as np
 import time
 
-def save(name,finished,p,value,ub,soltime,iteration, bigQ,q,c):
+def save(name,finished,p,value,relax,soltime,iteration, bigQ,q,c):
     f = open("../output/Application1/"+name+"/InnerOuterApproxAlgo.txt","w+")
     if finished==True:
         f.write("Finished before time limit.\n")
     else:
         f.write("Time limit reached.\n")
     f.write("Obj: "+str(value)+"\n")
-    f.write("Obj relaxation: "+str(ub)+"\n")
+    f.write("Obj relaxation: "+str(relax)+"\n")
     f.write("Average LSE: {0}\n".format(value/p))
     f.write("SolTime: "+str(soltime)+"\n")
     f.write("It. number: "+str(iteration)+"\n")
