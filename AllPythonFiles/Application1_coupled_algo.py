@@ -48,9 +48,14 @@ def main_app1(name,mu,timelimit = 18000):
     mu2 = 100*mu
     """Solve the restriction. If sufficient condition of GOPT is satisfied, stop"""
     t0 = t1 = time.time()
-    Qsol,qsol,csol,minvp,obj=restriction(name,n,wlist,z)
+    Qsol,qsol,csol,obj=restriction(name,n,wlist,z)
     mastertime = time.time() - t1
-    running = minvp<1e-7
+    try:
+        np.linalg.cholesky(Qsol)
+        running=False
+    except:
+        running=True
+    
     ValueLogRes.append(obj)
     ValueLogRel.append(-np.inf)
     EpsLogs.append(0)
@@ -158,7 +163,7 @@ def restriction(name,n,wlist,z):
             w = wlist[i]
             test+= (z[i]-0.5*w.dot(Qsol).dot(w) - w.dot(qsol) - csol)**2
         sol_time =  M.getSolverDoubleInfo("optimizerTime")
-        return Qsol,qsol,csol,min(np.linalg.eigvalsh(Qsol)),obj.level()[0]**2
+        return Qsol,qsol,csol,obj.level()[0]**2
 
 
 def master(name,n,wlist,z,Qxk_list,qxk_list, vxk_vector,yklist,mu):

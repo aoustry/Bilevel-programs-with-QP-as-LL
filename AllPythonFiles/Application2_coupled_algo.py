@@ -46,10 +46,15 @@ def main_app2(name_dimacs,name,mu,timelimit=18000):
     assert(np.linalg.norm(Q2-Q2.T)<1E-6)
     """Solve the restriction. If sufficient condition of GOPT is satisfied, stop"""
     t0 = t1 = time.time()
-    xres, cres, minvp,obj = restriction(M,n,Q1,Q2,q1,q2,diagonalQ2x)
+    xres, cres,obj = restriction(M,n,Q1,Q2,q1,q2,diagonalQ2x)
+    mat = (Q2+np.diag(diagonalQ2x*xres))
     x = xres
     mastertime = time.time() - t1
-    running = minvp<1e-7
+    try:
+        np.linalg.cholesky(mat)
+        running=False
+    except:
+        running=True
     ValueLogRes.append(obj)
     ValueLogRel.append(-np.inf)
     EpsLogs.append(0)
@@ -147,7 +152,7 @@ def restriction(M,n,Q1,Q2,q1,q2,diagonalQ2x):
         cres = c.level()[0]
         assert(abs(tres-0.5*xres.dot(Q1).dot(xres))<1E-7)
         assert(abs(PSDVar.level()[-1] - (alpha.level()[0]+beta.level()[0]))<1E-7)
-        return xres, cres, min(np.linalg.eigvalsh(Q2+np.diag(diagonalQ2x*xres))),cres + tres + xres.dot(q1)
+        return xres, cres,cres + tres + xres.dot(q1)
 
 
 def master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list, vxk_vector,yklist,mu):
