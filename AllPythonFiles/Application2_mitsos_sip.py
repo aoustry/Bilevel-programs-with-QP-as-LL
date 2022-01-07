@@ -6,13 +6,15 @@ import time
 import pandas as pd
 
 
-def save(name,finished,value,soltime,iteration, xsol):
+def save(name,finished,value,ub,soltime,iteration, xsol):
     f = open("../output/Application2/"+name+"/mitsos_sip.txt","w+")
     if finished==True:
         f.write("Finished before time limit.\n")
     else:
         f.write("Time limit reached.\n")
     f.write("Obj: "+str(value)+"\n")
+    if finished==False:
+        f.write("Upper bound: "+str(ub)+"\n")
     f.write("SolTime: "+str(soltime)+"\n")
     f.write("It. number: "+str(iteration)+"\n")
     f.write("Upper level solution: "+str(xsol)+"\n")
@@ -112,7 +114,7 @@ def main_app2(name_dimacs,name,r=10,timelimit=18000):
         
        
     soltime = time.time() - t0
-    save(name,not(running),relax.objVal,soltime,iteration,x)
+    save(name,not(running),relax.objVal,ub,soltime,iteration,x)
     df = pd.DataFrame()
     df['UB'],df['LB'],df["Epsilon"],df["MasterTime"],df['LLTime'] = UpperBoundsLogs, LowerBoundsLogs, EpsLogs, MasterTimeLogs, LLTimeLogs
     df.to_csv("../output/Application2/"+name+"/mitsos_sip.csv")
