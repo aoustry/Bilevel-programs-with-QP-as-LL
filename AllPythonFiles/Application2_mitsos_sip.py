@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Dec  2 10:01:47 2021
-
-@author: aoust
-"""
 from DimacsReader import DimacsReader
 import gurobipy as gp
 from gurobipy import GRB
@@ -12,16 +6,19 @@ import time
 import pandas as pd
 
 
-def save(name, finished, value,soltime, itnumber, xsol):
+def save(name,finished,value,soltime,iteration, xsol):
     f = open("../output/Application2/"+name+"/mitsos_sip.txt","w+")
-    f.write('Finished before TL = {0}'.format(finished))
+    if finished==True:
+        f.write("Finished before time limit.\n")
+    else:
+        f.write("Time limit reached.\n")
     f.write("Obj: "+str(value)+"\n")
     f.write("SolTime: "+str(soltime)+"\n")
-    f.write("It. number: "+str(itnumber)+"\n")
+    f.write("It. number: "+str(iteration)+"\n")
     f.write("Upper level solution: "+str(xsol)+"\n")
     f.close()
 
-def main_app2(name_dimacs,name,r=10, timelimit=18000):
+def main_app2(name_dimacs,name,r=10,timelimit=18000):
     #Logs
     UpperBoundsLogs,LowerBoundsLogs, EpsLogs, MasterTimeLogs, LLTimeLogs = [],[],[],[],[]
     yubd = []
@@ -48,54 +45,54 @@ def main_app2(name_dimacs,name,r=10, timelimit=18000):
     
     relax = gp.Model("relax problem")
     xvar = relax.addMVar(n,lb=0,ub=1,name='x')
-    vvar = relax.addMVar(1,name='v',lb=-GRB.INFINITY,ub=GRB.INFINITY)
+    zvar = relax.addMVar(1,name='z',lb=-GRB.INFINITY,ub=GRB.INFINITY)
     relax.addConstr(np.ones(n)@xvar == 1)
-    relax.setObjective(vvar+xvar@(0.5*Q1)@xvar + q1@xvar, GRB.MINIMIZE)
+    relax.setObjective(zvar+xvar@(0.5*Q1)@xvar + q1@xvar, GRB.MINIMIZE)
     #First cut for boundedness
     y = np.ones(n)*(1/n)
     Y = (y.reshape(n,1).dot(y.reshape(1,n)))
     coeffC = np.array([0.5*Y[i,i] * diagonalQ2x[i] for i in range(n)])
-    relax.addConstr(vvar+coeffC@xvar+ (y@M)@xvar + q2@y + y@(0.5*Q2)@y >=0)
+    relax.addConstr(zvar+coeffC@xvar+ (y@M)@xvar + q2@y + y@(0.5*Q2)@y >=0)
     running = True
-    itnumber,ub = 0,np.inf
+    iteration,ub = 0,np.inf
     while running and (time.time()-t0<timelimit):
         #Solve LBD
         t1 = time.time()
         relax.optimize()
         lb = relax.objVal
         relaxtime = time.time() - t1
-        x,v = xvar.X, vvar.X
+        x,z = xvar.X, zvar.X
         Q = Q2+np.diag(diagonalQ2x*x)
         b = q2 + (M.T)@x
         #Solve LLP
         t1 = time.time()
         tl = 10+max(0,timelimit-(t1-t0))
-        y,val = solve_subproblem_App2(n,Q,b,v,tl)
+        y,val = solve_subproblem_App2(n,Q,b,z,tl)
         LLtime1 = time.time() - t1
-        itnumber+=1
+        iteration+=1
         if val>-1E-6:
             ub = lb
             running=False
         else:
             Y = (y.reshape(n,1).dot(y.reshape(1,n)))
             coeffC = np.array([0.5*Y[i,i] * diagonalQ2x[i] for i in range(n)])
-            relax.addConstr(vvar+coeffC@xvar+ (y@M)@xvar + q2@y + y@(0.5*Q2)@y >=0)
+            relax.addConstr(zvar+coeffC@xvar+ (y@M)@xvar + q2@y + y@(0.5*Q2)@y >=0)
             
         if running:
             t1 = time.time()
-            feasible, xres,vres = ubd_problem(n,Q1,q1,Q2,q2,M,diagonalQ2x,yubd,eps_r)
+            feasible,xres,zres = ubd_problem(n,Q1,q1,Q2,q2,M,diagonalQ2x,yubd,eps_r)
             restime = time.time() - t1
             if feasible:
                 t1 = time.time()
                 tl = 10+max(0,timelimit-(t1-t0))
                 Qres = Q2+np.diag(diagonalQ2x*x)
                 bres = q2 + (M.T)@x
-                y,valres = solve_subproblem_App2(n,Qres,bres,vres,tl)
+                y,valres = solve_subproblem_App2(n,Qres,bres,zres,tl)
                 LLtime2 =time.time() - t1
                
                 if valres>-1E-6:
                     eps_r = eps_r/r
-                    ub = min(ub,vres+xres@(0.5*Q1)@xres + q1@xres)
+                    ub = min(ub,zres+xres@(0.5*Q1)@xres + q1@xres)
                 else:
                     yubd.append(y)
             else:
@@ -115,16 +112,16 @@ def main_app2(name_dimacs,name,r=10, timelimit=18000):
         
        
     soltime = time.time() - t0
-    save(name,not(running), relax.objVal,soltime,itnumber, x)
+    save(name,not(running),relax.objVal,soltime,iteration,x)
     df = pd.DataFrame()
     df['UB'],df['LB'],df["Epsilon"],df["MasterTime"],df['LLTime'] = UpperBoundsLogs, LowerBoundsLogs, EpsLogs, MasterTimeLogs, LLTimeLogs
     df.to_csv("../output/Application2/"+name+"/mitsos_sip.csv")
 
-def solve_subproblem_App2(n,Q,b,v,tl):
+def solve_subproblem_App2(n,Q,b,z,tl):
     m = gp.Model("LL problem")
     y = m.addMVar(n, lb = 0.0, ub = 1.0, name="y")
     m.addConstr(np.ones(n)@y==1)
-    m.setObjective(y@(0.5*Q)@y+  b@y +v, GRB.MINIMIZE)
+    m.setObjective(y@(0.5*Q)@y+  b@y +z, GRB.MINIMIZE)
     m.setParam('NonConvex', 2)
     m.setParam('TimeLimit', tl)
     m.optimize()
@@ -133,24 +130,24 @@ def solve_subproblem_App2(n,Q,b,v,tl):
 def ubd_problem(n,Q1,q1,Q2,q2,M,diagonalQ2x,yubd,eps_r):
     model = gp.Model("relax problem")
     xvar = model.addMVar(n,lb=0,ub=1,name='x')
-    vvar = model.addMVar(1,name='v',lb=-GRB.INFINITY,ub=GRB.INFINITY)
+    zvar = model.addMVar(1,name='z',lb=-GRB.INFINITY,ub=GRB.INFINITY)
     model.addConstr(np.ones(n)@xvar == 1)
-    model.setObjective(vvar+xvar@(0.5*Q1)@xvar + q1@xvar, GRB.MINIMIZE)
+    model.setObjective(zvar+xvar@(0.5*Q1)@xvar + q1@xvar, GRB.MINIMIZE)
     #First cut for boundedness
     y = np.ones(n)*(1/n)
     Y = (y.reshape(n,1).dot(y.reshape(1,n)))
     coeffC = np.array([0.5*Y[i,i] * diagonalQ2x[i] for i in range(n)])
-    model.addConstr(vvar+coeffC@xvar+ (y@M)@xvar + q2@y + y@(0.5*Q2)@y >=eps_r)
+    model.addConstr(zvar+coeffC@xvar+ (y@M)@xvar + q2@y + y@(0.5*Q2)@y >=eps_r)
     for y in yubd:
         Y = (y.reshape(n,1).dot(y.reshape(1,n)))
         coeffC = np.array([0.5*Y[i,i] * diagonalQ2x[i] for i in range(n)])
-        model.addConstr(vvar+coeffC@xvar+ (y@M)@xvar + q2@y + y@(0.5*Q2)@y >=eps_r)
+        model.addConstr(zvar+coeffC@xvar+ (y@M)@xvar + q2@y + y@(0.5*Q2)@y >=eps_r)
     model.optimize()
 
     
     if model.status in [3,4]:
         return False, np.zeros(0),np.zeros(0)
     else:
-        return True, xvar.X, vvar.X
+        return True, xvar.X, zvar.X
 
  
