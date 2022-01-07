@@ -6,7 +6,7 @@ import sys
 import numpy as np
 import time
 
-def save(name,finished,p,value,ub,soltime, bigQ,q,c):
+def save(name,finished,p,value,ub,soltime,iteration, bigQ,q,c):
     f = open("../output/Application1/"+name+"/InnerOuterApproxAlgo.txt","w+")
     if finished==True:
         f.write("Finished before time limit.\n")
@@ -16,6 +16,7 @@ def save(name,finished,p,value,ub,soltime, bigQ,q,c):
     f.write("Obj relaxation: "+str(ub)+"\n")
     f.write("Average LSE: {0}\n".format(value/p))
     f.write("SolTime: "+str(soltime)+"\n")
+    f.write("It. number: "+str(iteration)+"\n")
     f.write("\nQ matrix recovered: " +str(bigQ) +"\n")
     f.write("q vector recovered: " +str(q) +"\n")
     f.write("Scalar c recovered: " +str(c) +"\n")
@@ -85,7 +86,7 @@ def main_app1(name,mu,timelimit = 18000):
         print("Distance term (check) = {0}".format(dist))
         print("Epsilon term (check) = {0}".format(epsrel))
     soltime = time.time() - t0
-    save(name,not(running),len(z),obj,obj_relax,soltime,Qsol,qsol,csol)
+    save(name,not(running),len(z),obj,obj_relax,soltime,iteration, Qsol,qsol,csol)
     df = pd.DataFrame()
     df['MasterObjRes'],df['MasterObjRel'],df["Epsilon"],df["MasterTime"],df['LLTime'] = ValueLogRes, ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs
     df.to_csv("../output/Application1/"+name+"/InnerOuterApproxAlgo.csv")
