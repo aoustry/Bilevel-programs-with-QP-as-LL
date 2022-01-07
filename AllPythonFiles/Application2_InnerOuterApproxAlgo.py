@@ -14,7 +14,8 @@ def save(name,finished,value,relax,soltime,iteration, xsol):
     else:
         f.write("Time limit reached.\n")
     f.write("Obj: "+str(value)+"\n")
-    f.write("Obj relaxation: "+str(relax)+"\n")
+    if iteration>0 and finished==False:
+        f.write("Obj relaxation: "+str(relax)+"\n")
     f.write("SolTime: "+str(soltime)+"\n")
     f.write("It. number: "+str(iteration)+"\n")
     f.write("\nUpper level solution: "+str(xsol)+"\n")
@@ -44,7 +45,7 @@ def main_app2(name_dimacs,name,mu,timelimit=18000):
     xres, zres, obj = restriction(M,n,Q1,Q2,q1,q2,diagonalQ2x)
     x = xres
     mastertime = time.time() - t0
-    obj_relax=-100000 #random value
+    obj_relax=0 
     
     #we check if the matrix Q2 is PD (i.e. sufficient condition satisfied) using Cholesky factorization:
     try:
@@ -65,7 +66,7 @@ def main_app2(name_dimacs,name,mu,timelimit=18000):
     mu2 = mu * 100
     Qxk_list, qxk_list, vxk_list, yklist = [],[],[],[]
     while running and (time.time()-t0 < timelimit):
-        print("Iteration number {0}".format(iteration))
+        print("Iteration number {0}".format(iteration+1))
         t1 = time.time()
         #we solve the master problem
         x,z,xrelax,crelax,obj,obj_relax,dist = master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list,np.array(vxk_list),yklist,mu)
