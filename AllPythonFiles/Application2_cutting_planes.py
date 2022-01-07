@@ -43,26 +43,26 @@ def main_app2(name_dimacs,name,timelimit=18000):
     
     master = gp.Model("Master problem")
     xvar = master.addMVar(n,lb=0,ub=1,name='x')
-    vvar = master.addMVar(1,name='v',lb=-GRB.INFINITY,ub=GRB.INFINITY)
+    zvar = master.addMVar(1,name='z',lb=-GRB.INFINITY,ub=GRB.INFINITY)
     master.addConstr(np.ones(n)@xvar == 1)
-    master.setObjective(vvar+xvar@(0.5*Q1)@xvar + q1@xvar, GRB.MINIMIZE)
+    master.setObjective(zvar+xvar@(0.5*Q1)@xvar + q1@xvar, GRB.MINIMIZE)
     #First cut for boundedness
     y = np.ones(n)*(1/n)
     Y = (y.reshape(n,1).dot(y.reshape(1,n)))
     coeffC = np.array([0.5*Y[i,i] * diagonalQ2x[i] for i in range(n)])
-    master.addConstr(vvar+coeffC@xvar+ (y@M)@xvar + q2@y + y@(0.5*Q2)@y >=0)
+    master.addConstr(zvar+coeffC@xvar+ (y@M)@xvar + q2@y + y@(0.5*Q2)@y >=0)
     running = True
     iteration = 0
     while running and (time.time()-t0<timelimit):
         t1 = time.time()
         master.optimize()
         mastertime = time.time() - t1
-        x,v = xvar.X, vvar.X
+        x,z = xvar.X, zvar.X
         Q = Q2+np.diag(diagonalQ2x*x)
         b = q2 + (M.T)@x
         t1 = time.time()
         tl = 10+max(0,timelimit-(t1-t0))
-        y,val = solve_subproblem_App2(n,Q,b,v,tl)
+        y,val = solve_subproblem_App2(n,Q,b,z,tl)
         LLtime = time.time() - t1
         iteration+=1
         
@@ -79,18 +79,18 @@ def main_app2(name_dimacs,name,timelimit=18000):
         else:
             Y = (y.reshape(n,1).dot(y.reshape(1,n)))
             coeffC = np.array([0.5*Y[i,i] * diagonalQ2x[i] for i in range(n)])
-            master.addConstr(vvar+coeffC@xvar+ (y@M)@xvar + q2@y + y@(0.5*Q2)@y >=0)
+            master.addConstr(zvar+coeffC@xvar+ (y@M)@xvar + q2@y + y@(0.5*Q2)@y >=0)
     soltime = time.time() - t0
     save(name,not(running), master.objVal,master.objVal+max(0,-val),soltime,iteration,x)
     df = pd.DataFrame()
     df['UB'],df['LB'],df["Epsilon"],df["MasterTime"],df['LLTime'] = UpperBoundsLogs, LowerBoundsLogs, EpsLogs, MasterTimeLogs, LLTimeLogs
     df.to_csv("../output/Application2/"+name+"/cutting_plane.csv")
 
-def solve_subproblem_App2(n,Q,b,v,tl):
+def solve_subproblem_App2(n,Q,b,z,tl):
     m = gp.Model("LL problem")
     y = m.addMVar(n, lb = 0.0, ub = 1.0, name="y")
     m.addConstr(np.ones(n)@y==1)
-    m.setObjective(y@(0.5*Q)@y+  b@y +v, GRB.MINIMIZE)
+    m.setObjective(y@(0.5*Q)@y+  b@y +z, GRB.MINIMIZE)
     m.setParam('NonConvex', 2)
     m.setParam('TimeLimit', tl)
     m.optimize()
