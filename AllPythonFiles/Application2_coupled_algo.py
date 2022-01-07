@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import gurobipy as gp
 from gurobipy import GRB
 from mosek.fusion import *
@@ -8,28 +7,20 @@ import pandas as pd
 from scipy.linalg import sqrtm
 from DimacsReader import *
 
-def save(name,finished, value,soltime, xsol):
+def save(name,finished,value,soltime,xsol):
     f = open("../output/Application2/"+name+"/coupledAlgo.txt","w+")
-    f.write('Finished before TL = {0}'.format(finished))
+    if finished==True:
+        f.write("Finished before time limit.\n")
+    else:
+        f.write("Time limit reached.\n")
     f.write("Obj: "+str(value)+"\n")
     f.write("SolTime: "+str(soltime)+"\n")
-    f.write("Upper level solution: "+str(xsol)+"\n")
+    f.write("\nUpper level solution: "+str(xsol)+"\n")
     f.close()
-    
-def solve_subproblem_App2(n,Q,b,c,tl):
-    m = gp.Model("LL problem")
-    m.Params.LogToConsole = 0
-    y = m.addMVar(n, lb = 0.0, ub = 1.0, name="y")
-    m.addConstr(np.ones(n)@y==1)
-    m.setObjective(y@(0.5*Q)@y+  b@y +c, GRB.MINIMIZE)
-    m.setParam('NonConvex', 2)
-    m.setParam('TimeLimit', tl)
-    m.optimize()
-    return y.X, m.objVal
 
 def main_app2(name_dimacs,name,mu,timelimit=18000):
     #Logs
-    ValueLogRes,ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs = [],[],[],[],[]
+    ValueLogRes, ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs = [],[],[],[],[]
     #Reading graph file
     f = DimacsReader("../DIMACS/"+name_dimacs)
     M = f.M
@@ -44,39 +35,50 @@ def main_app2(name_dimacs,name,mu,timelimit=18000):
     assert(np.linalg.norm(M-M.T)<1E-6)
     assert(np.linalg.norm(Q1-Q1.T)<1E-6)
     assert(np.linalg.norm(Q2-Q2.T)<1E-6)
+    
+    print("We are solving instance:", name)
     """Solve the restriction. If sufficient condition of GOPT is satisfied, stop"""
-    t0 = t1 = time.time()
-    xres, cres,obj = restriction(M,n,Q1,Q2,q1,q2,diagonalQ2x)
-    mat = (Q2+np.diag(diagonalQ2x*xres))
+    t0 = time.time()
+    xres, zres, obj = restriction(M,n,Q1,Q2,q1,q2,diagonalQ2x)
     x = xres
-    mastertime = time.time() - t1
+    mastertime = time.time() - t0
+    
+    #we check if the matrix Q2 is PD (i.e. sufficient condition satisfied) using Cholesky factorization:
     try:
-        np.linalg.cholesky(mat)
-        running=False
-    except:
-        running=True
+        np.linalg.cholesky(Q2+np.diag(diagonalQ2x*xres))
+        posdef = True
+    except np.linalg.LinAlgError:
+        posdef = False
+    running = not(posdef)
+    
     ValueLogRes.append(obj)
     ValueLogRel.append(-np.inf)
     EpsLogs.append(0)
     MasterTimeLogs.append(mastertime)
     LLTimeLogs.append(0)
+
     """If not, we run the inner/outer approximation algorithm """
-    Qxk_list, qxk_list, vxk_list,yklist = [],[],[],[]
-    it_count = 0
-    mu2 = mu *100
-    while running and (time.time()-t0<timelimit):
+    iteration = 0
+    mu2 = mu * 100
+    Qxk_list, qxk_list, vxk_list, yklist = [],[],[],[]
+    while running and (time.time()-t0 < timelimit):
+        print("Iteration number {0}".format(iteration))
         t1 = time.time()
-        x,c,xrelax,crelax,obj,obj_relax,dist = master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list, np.array(vxk_list),yklist,mu)
+        #we solve the master problem
+        x,z,xrelax,crelax,obj,obj_relax,dist = master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list,np.array(vxk_list),yklist,mu)
         mastertime = time.time() - t1
-        t1 = time.time()
+        
         Qrelax = Q2+np.diag(diagonalQ2x*xrelax)
         brelax = q2 + (M.T)@xrelax
-        tl = 10+max(0,timelimit-(t1-t0))
-        yrelax,epsrel = solve_subproblem_App2(n,Qrelax,brelax,crelax,tl)
+        tl = 10+max(0,timelimit-(time.time()-t0))
+
+        #we solve the inner problem
+        t1 = time.time()
+        yrelax,epsrel = solve_subproblem_App2(n,Qrelax,brelax,crelax,tl) #we get epsrel = (v+crelax)
         LLtime = time.time() - t1
         Qxk_list.append(Qrelax)
         qxk_list.append(brelax)
-        vxk_list.append(epsrel-crelax)
+        vxk_list.append(epsrel-crelax)#we solve the LL problem involving h(xrelax)=crelax, thus, to obtain v, we have to subtract from the LLobj h(xrelax)
         yklist.append(yrelax)
         #Logs
         ValueLogRes.append(obj)
@@ -85,15 +87,16 @@ def main_app2(name_dimacs,name,mu,timelimit=18000):
         MasterTimeLogs.append(mastertime)
         LLTimeLogs.append(LLtime)
         print("ObjRes, ObjRel, Average = {0},{1},{2}".format(obj,obj_relax,0.5*obj+0.5*obj_relax))
+        print("Distance term (check) = {0}".format(dist))
+        print("Epsilon term (check) = {0}".format(epsrel))
         if epsrel>-1E-6 and dist<1E-6:
             running=False
         if abs(obj-obj_relax)/abs(obj)<0.001:
             mu = mu2
-        it_count+=1
-        print("Iteration number {0}".format(it_count))
+        iteration+=1
     
     soltime = time.time() - t0
-    save(name,not(running), obj,soltime, x)
+    save(name,not(running),obj,soltime,x)
     df = pd.DataFrame()
     df['MasterObjRes'],df['MasterObjRel'],df["Epsilon"],df["MasterTime"],df['LLTime'] = ValueLogRes,ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs
     df.to_csv("../output/Application2/"+name+"/coupledAlgo.csv")
@@ -104,7 +107,7 @@ def restriction(M,n,Q1,Q2,q1,q2,diagonalQ2x):
         A = -np.eye(n)
         
         #Upper level var
-        c = model.variable("v", 1, Domain.unbounded())
+        z = model.variable("z", 1, Domain.unbounded())
         x = model.variable("x", n, Domain.greaterThan(0.0))
             
         #LL variables
@@ -124,17 +127,17 @@ def restriction(M,n,Q1,Q2,q1,q2,diagonalQ2x):
         ##t >= 0.5 x^TQ_1x iif t >= 0.5 ||P_1 x ||^2   iif (t,1, P_1x) \in RotatedCone(n+2)
         ## This constraint is necessary saturated at the optimum, thus we have t = 0.5 x^TQ_1x
         model.constraint(Expr.vstack(t,1, Expr.mul(P1,x)), Domain.inRotatedQCone(n+2))
-        c_and_player1_cost = Expr.add(c, Expr.add(t,Expr.dot(q1,x))) #upper level objective function
+        z_and_player1_cost = Expr.add(z, Expr.add(t,Expr.dot(q1,x))) #upper level objective function
         
         #Objective
-        model.objective( "objfunct", ObjectiveSense.Minimize, c_and_player1_cost )
+        model.objective( "objfunct", ObjectiveSense.Minimize, z_and_player1_cost )
     
         #Simplex constraint for x
         model.constraint( Expr.sum(x),  Domain.equalsTo(1) )
          
-        # -v + lambda1 + 2 alpha + beta \leq 0 
+        # -z + lambda1 + 2 alpha + beta \leq 0 
         sum_of_duals = Expr.add(lam,Expr.add(Expr.mul(2,alpha),beta))
-        model.constraint(Expr.add(Expr.mul(-1,c),sum_of_duals),Domain.lessThan(0.0))
+        model.constraint(Expr.add(Expr.mul(-1,z),sum_of_duals),Domain.lessThan(0.0))
         
         #Constraints to define the several parts of the PSD matrix
         Q2x = Expr.add([Expr.mul(x.index(i),Matrix.sparse(n, n, [i], [i], [0.5*diagonalQ2x[i]])) for i in range(n)])
@@ -149,10 +152,10 @@ def restriction(M,n,Q1,Q2,q1,q2,diagonalQ2x):
         #Get results
         xres = x.level()
         tres = t.level()[0]
-        cres = c.level()[0]
+        zres = z.level()[0]
         assert(abs(tres-0.5*xres.dot(Q1).dot(xres))<1E-7)
         assert(abs(PSDVar.level()[-1] - (alpha.level()[0]+beta.level()[0]))<1E-7)
-        return xres, cres,cres + tres + xres.dot(q1)
+        return xres, zres , zres + tres + xres.dot(q1)
 
 
 def master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list, vxk_vector,yklist,mu):
@@ -161,9 +164,9 @@ def master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list, vxk_vector,yklist,mu):
     with Model("App2") as model:
         A = -np.eye(n)
         #Upper level var
-        c = model.variable("v", 1, Domain.unbounded())
+        z = model.variable("z", 1, Domain.unbounded())
         x = model.variable("x", n, Domain.greaterThan(0.0))
-        crelax = model.variable("vrelax", 1, Domain.unbounded())
+        zrelax = model.variable("zrelax", 1, Domain.unbounded())
         xrelax = model.variable("xrelax", n, Domain.greaterThan(0.0))
         distance_term = model.variable("dist", 2, Domain.unbounded())
             
@@ -182,28 +185,29 @@ def master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list, vxk_vector,yklist,mu):
         
         #other auxiliary variables
         t = model.variable("t", 1, Domain.unbounded()) #upper level variable
-        trelax = model.variable("trelax", 1, Domain.unbounded())
-        P1 = sqrtm(Q1) #necessary for the following constraint
-        ##t >= 0.5 x^TQ_1x iif t >= 0.5 ||P_1 x ||^2   iif (t,1, P_1x) \in RotatedCone(n+2)
+        trelax = model.variable("trelax", 1, Domain.unbounded()) #upper level variable
+        P1 = sqrtm(Q1) #necessary for the following constraints
+        ## t >= 0.5 x^TQ_1x iif t >= 0.5 ||P_1 x ||^2   iif (t,1, P_1x) \in RotatedCone(n+2)
         ## This constraint is necessary saturated at the optimum, thus we have t = 0.5 x^TQ_1x
         model.constraint(Expr.vstack(t,1, Expr.mul(P1,x)), Domain.inRotatedQCone(n+2))
         model.constraint(Expr.vstack(trelax,1, Expr.mul(P1,xrelax)), Domain.inRotatedQCone(n+2))
-        c_and_player1_cost = Expr.add(c, Expr.add(t,Expr.dot(q1,x))) #upper level objective function
-        c_and_player1_cost_relax = Expr.add(crelax, Expr.add(trelax,Expr.dot(q1,xrelax))) #upper level objective function
+
+        z_and_player1_cost = Expr.add(z, Expr.add(t,Expr.dot(q1,x))) #upper level objective function
+        z_and_player1_cost_relax = Expr.add(zrelax, Expr.add(trelax,Expr.dot(q1,xrelax))) #upper level objective function
         
         #Objective
-        model.constraint( Expr.vstack(1.0,Expr.vstack(distance_term.index(0), Expr.sub(x, xrelax))), Domain.inRotatedQCone() ) 
-        model.constraint( Expr.vstack(1.0,Expr.vstack(distance_term.index(1), Expr.sub(c, crelax))), Domain.inRotatedQCone() ) 
+        model.constraint( Expr.vstack(1.0,Expr.vstack(distance_term.index(0), Expr.sub(x, xrelax))), Domain.inRotatedQCone() ) #distance_term first component
+        model.constraint( Expr.vstack(1.0,Expr.vstack(distance_term.index(1), Expr.sub(z, zrelax))), Domain.inRotatedQCone() ) #distance_term second component
         
-        model.objective( "objfunct", ObjectiveSense.Minimize, Expr.add(c_and_player1_cost,Expr.add(c_and_player1_cost_relax,Expr.mul(mu, Expr.sum(distance_term))) ))
+        model.objective( "objfunct", ObjectiveSense.Minimize, Expr.add(z_and_player1_cost,Expr.add(z_and_player1_cost_relax,Expr.mul(mu, Expr.sum(distance_term)))) )
     
         #Simplex constraint for x
         model.constraint( Expr.sum(x),  Domain.equalsTo(1) )
         model.constraint( Expr.sum(xrelax),  Domain.equalsTo(1) )
          
-        # -v -\eta^t v + lambda1 + 2 alpha + beta  \leq 0 
+        # -z -\eta^t v + lambda1 + 2 alpha + beta  \leq 0 
         sum_of_duals = Expr.add(lam,Expr.add(Expr.mul(2,alpha),beta))
-        model.constraint(Expr.add(Expr.mul(-1,Expr.add(Expr.dot(eta,vxk_vector),c)),sum_of_duals),Domain.lessThan(0.0))
+        model.constraint(Expr.add(Expr.mul(-1,Expr.add(Expr.dot(eta,vxk_vector),z)),sum_of_duals),Domain.lessThan(0.0))
         Q2x = Expr.add([Expr.mul(x.index(i),Matrix.sparse(n, n, [i], [i], [0.5*diagonalQ2x[i]])) for i in range(n)])
             
         #Constraints to define the several parts of the PSD matrix
@@ -216,9 +220,7 @@ def master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list, vxk_vector,yklist,mu):
             model.constraint(Expr.sub(Expr.add(Expr.sub(Expr.add(0.5*Q2,Q2x),Expr.mul(0.5,combiliMat)), Expr.mul(alpha,np.eye(n))), PSDVar_main),  Domain.equalsTo(0,n,n) )
             model.constraint(Expr.sub(Expr.add(Expr.add(Expr.sub(0.5*q2,Expr.mul(0.5,combiliVect)), Expr.add(Expr.mul(0.5*M.T,x),Expr.mul(lam,0.5*np.ones(n)))),Expr.mul(lam2,0.5*A)), PSDVar_vec),  Domain.equalsTo(0,n) )
             model.constraint(Expr.sub(Expr.add(beta, alpha), PSDVar_offset),  Domain.equalsTo(0) )
-    
         else:
-        
             model.constraint(Expr.sub(Expr.add(Expr.add(0.5*Q2,Q2x), Expr.mul(alpha,np.eye(n))), PSDVar_main),  Domain.equalsTo(0,n,n) )
             model.constraint(Expr.sub(Expr.add(Expr.add(0.5*q2, Expr.add(Expr.mul(0.5*M.T,x),Expr.mul(lam,0.5*np.ones(n)))),Expr.mul(lam2,0.5*A)), PSDVar_vec),  Domain.equalsTo(0,n) )
             model.constraint(Expr.sub(Expr.add(beta, alpha), PSDVar_offset),  Domain.equalsTo(0) )
@@ -232,22 +234,31 @@ def master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list, vxk_vector,yklist,mu):
             Y = (y.reshape(n,1).dot(y.reshape(1,n))).reshape(n**2)
             froeb_prod = Expr.dot(Expr.flatten(quad),Y.flatten())
             scal_prod = Expr.dot(y,Expr.add(q2,Expr.mul(M,xrelax)))
-            model.constraint(Expr.add(Expr.add(froeb_prod,scal_prod),crelax), Domain.greaterThan(0))
+            model.constraint(Expr.add(Expr.add(froeb_prod,scal_prod),zrelax), Domain.greaterThan(0))
     
     
         #Solve
-        #model.setLogHandler(sys.stdout)            # Add logging
         model.acceptedSolutionStatus(AccSolutionStatus.Anything)
         model.writeTask("App2.ptf")                # Save problem in readable format
         model.solve()
         soltime =  model.getSolverDoubleInfo("optimizerTime")
         
         #Get results
-        xsol,csol,xrelaxsol,crelaxsol = x.level(), c.level()[0],xrelax.level(),crelax.level()[0]
-        dist = np.linalg.norm(xsol-xrelaxsol,2)**2 + (csol-crelaxsol)**2
-        #print(csol+0.5*(xsol@Q1@xsol)+q1@xsol,crelaxsol+0.5*(xrelaxsol@Q1@xrelaxsol)+q1@xrelaxsol)
-        print("Distance term (check) = {0}".format(dist))
-        return xsol,csol,xrelaxsol,crelaxsol,csol+0.5*(xsol@Q1@xsol)+q1@xsol,crelaxsol+0.5*(xrelaxsol@Q1@xrelaxsol)+q1@xrelaxsol, dist
+        xsol,zsol,xrelaxsol,zrelaxsol = x.level(), z.level()[0],xrelax.level(),zrelax.level()[0]
+        dist = np.linalg.norm(xsol-xrelaxsol,2)**2 + (zsol-zrelaxsol)**2
+        return xsol,zsol,xrelaxsol,zrelaxsol,zsol+0.5*(xsol@Q1@xsol)+q1@xsol,zrelaxsol+0.5*(xrelaxsol@Q1@xrelaxsol)+q1@xrelaxsol,dist
               
-
+def solve_subproblem_App2(n,Q,b,c,tl):
+    m = gp.Model("LL problem")
+    m.Params.LogToConsole = 0
+    y = m.addMVar(n, lb = 0.0, ub = 1.0, name="y")
+    m.addConstr(np.ones(n)@y==1)
+    m.setObjective(y@(0.5*Q)@y+  b@y +c, GRB.MINIMIZE)
+    m.setParam('NonConvex', 2)
+    m.setParam('TimeLimit', tl)
+    m.optimize()
+    return y.X, m.objVal
         
+    # if name[-2]=='t':
+    #     running=False
+    # else:
