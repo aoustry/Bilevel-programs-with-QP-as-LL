@@ -7,7 +7,7 @@ import pandas as pd
 from scipy.linalg import sqrtm
 from DimacsReader import *
 
-def save(name,finished,value,ub,soltime,xsol):
+def save(name,finished,value,ub,soltime,iteration, xsol):
     f = open("../output/Application2/"+name+"/InnerOuterApproxAlgo.txt","w+")
     if finished==True:
         f.write("Finished before time limit.\n")
@@ -16,6 +16,7 @@ def save(name,finished,value,ub,soltime,xsol):
     f.write("Obj: "+str(value)+"\n")
     f.write("Obj relaxation: "+str(ub)+"\n")
     f.write("SolTime: "+str(soltime)+"\n")
+    f.write("It. number: "+str(iteration)+"\n")
     f.write("\nUpper level solution: "+str(xsol)+"\n")
     f.close()
 
@@ -97,7 +98,7 @@ def main_app2(name_dimacs,name,mu,timelimit=18000):
         iteration+=1
     
     soltime = time.time() - t0
-    save(name,not(running),obj,obj_relax,soltime,x)
+    save(name,not(running),obj,obj_relax,soltime,iteration, x)
     df = pd.DataFrame()
     df['MasterObjRes'],df['MasterObjRel'],df["Epsilon"],df["MasterTime"],df['LLTime'] = ValueLogRes,ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs
     df.to_csv("../output/Application2/"+name+"/InnerOuterApproxAlgo.csv")
