@@ -1,11 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Dec  6 15:09:25 2021
-
-@author: aoust
-"""
-
-
 import pandas as pd
 from mosek.fusion import *
 import gurobipy as gp
@@ -16,59 +8,61 @@ import time
 
 def save(name,finished, p,value, soltime, bigQ, q,c):
     f = open("../output/Application1/"+name+"/coupledAlgo.txt","w+")
-    f.write('Finished before TL = {0}'.format(finished))
+    if finished==True:
+        f.write("Finished before time limit.\n")
+    else:
+        f.write("Time limit reached.\n")
     f.write("Obj: "+str(value)+"\n")
-    f.write("Average LSE = {0}".format(value/p))
+    f.write("Average LSE: {0}\n".format(value/p))
     f.write("SolTime: "+str(soltime)+"\n")
-    f.write("Q matrix recovered: " +str(bigQ) +"\n")
+    f.write("\nQ matrix recovered: " +str(bigQ) +"\n")
     f.write("q vector recovered: " +str(q) +"\n")
     f.write("Scalar c recovered: " +str(c) +"\n")
     f.close()
     
-    
-def solve_subproblem_App1(n,Q,q,c,tl):
-    m = gp.Model("LL problem")
-    m.Params.LogToConsole = 0
-    y = m.addMVar(n, lb = 0.0, ub = 1.0, name="y")
-    Qtimeshalf = 0.5*Q
-    m.setObjective(y@Qtimeshalf@y+  q@y +c, GRB.MINIMIZE)
-    m.setParam('NonConvex', 2)
-    m.setParam('TimeLimit', tl)
-    m.optimize()
-    return y.X, m.objVal
 
 def main_app1(name,mu,timelimit = 18000):
     #Logs
-    ValueLogRes,ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs = [],[],[],[],[]
+    ValueLogRes, ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs = [],[],[],[],[]
     #Loading data
     wlist = np.load("../Application1_data/"+name+"/w.npy")
     n = wlist.shape[1]
     z = np.load("../Application1_data/"+name+"/z.npy")
-    it_count = 0
-    mu2 = 100*mu
+    
+    print("We are solving instance:", name)
     """Solve the restriction. If sufficient condition of GOPT is satisfied, stop"""
-    t0 = t1 = time.time()
+    t0 = time.time()
     Qsol,qsol,csol,obj=restriction(name,n,wlist,z)
-    mastertime = time.time() - t1
+    mastertime = time.time() - t0
+
+    #we check if the matrix Q2 is PD (i.e. sufficient condition satisfied) using Cholesky factorization:
     try:
         np.linalg.cholesky(Qsol)
-        running=False
-    except:
-        running=True
-    
+        posdef = True
+    except np.linalg.LinAlgError:
+        posdef = False
+    running = not(posdef)
+
     ValueLogRes.append(obj)
     ValueLogRel.append(-np.inf)
     EpsLogs.append(0)
     MasterTimeLogs.append(mastertime)
     LLTimeLogs.append(0)
+
     """If not, we run the inner/outer approximation algorithm """
-    Qxk_list, qxk_list, vxk_list,yklist = [],[],[],[]
+    iteration = 0
+    mu2 = 100*mu
+    Qxk_list,qxk_list,vxk_list,yklist = [],[],[],[]
     while running and (time.time()-t0<timelimit):
+        print("Iteration number {0}".format(iteration))
         t1 = time.time()
+        #we solve the master problem
         Qsol,qsol,csol,Qsolrelax,qsolrelax,csolrelax,obj,obj_relax,dist = master(name,n,wlist,z,Qxk_list,qxk_list,np.array(vxk_list),yklist,mu)
         mastertime = time.time() - t1
+        
+        tl = 10+max(0,timelimit-(time.time()-t0))
+        #we solve the inner problem
         t1 = time.time()
-        tl = 10+max(0,timelimit-(t1-t0))
         yrelax,epsrel = solve_subproblem_App1(n,Qsolrelax,qsolrelax,csolrelax,tl)
         LLtime = time.time() - t1
         Qxk_list.append(Qsolrelax)
@@ -85,13 +79,14 @@ def main_app1(name,mu,timelimit = 18000):
             mu = mu2
         if epsrel>-1E-6 and dist<1E-6:
             running=False
-        it_count+=1
+        iteration+=1
         print("ObjRes, ObjRel, Average = {0},{1},{2}".format(obj,obj_relax,0.5*obj+0.5*obj_relax))
-        print("Iteration number {0}".format(it_count))
+        print("Distance term (check) = {0}".format(dist))
+        print("Epsilon term (check) = {0}".format(epsrel))
     soltime = time.time() - t0
     save(name,not(running),len(z),obj,soltime,Qsol,qsol,csol)
     df = pd.DataFrame()
-    df['MasterObjRes'],df['MasterObjRel'],df["Epsilon"],df["MasterTime"],df['LLTime'] = ValueLogRes,ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs
+    df['MasterObjRes'],df['MasterObjRel'],df["Epsilon"],df["MasterTime"],df['LLTime'] = ValueLogRes, ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs
     df.to_csv("../output/Application1/"+name+"/coupledAlgo.csv")
     
 
@@ -147,14 +142,13 @@ def restriction(name,n,wlist,z):
         M.constraint( Expr.sub(Expr.add(Expr.mul(0.5,q), Expr.mul(lam,0.5*A)), PSDVar_vec),  Domain.equalsTo(0,n) )
         M.constraint( Expr.sub(Expr.add(beta, alpha), PSDVar_offset),  Domain.equalsTo(0) )
     
-    
         # Solve
         M.writeTask("App1.ptf")                # Save problem in readable format
         M.solve()
     
         #Get results
-        print("Objective value ={0}".format(obj.level()**2))
-        print(PSDVar.level().reshape(n+1,n+1))
+        print("Objective value restriction ={0}".format(obj.level()**2))
+        #print(PSDVar.level().reshape(n+1,n+1))
         test = 0
         Qsol = Q.level().reshape(n,n)
         qsol = q.level()
@@ -225,7 +219,6 @@ def master(name,n,wlist,z,Qxk_list,qxk_list, vxk_vector,yklist,mu):
         
         
         M.objective(ObjectiveSense.Minimize, Expr.add(Expr.add(obj,objrelax),Expr.mul(mu,Expr.sum(distance_term)) ))
-        #we minimize obj s.t. obj**2 >= \sum_p (z_p-zpredicted_p)**2 -> It is like we are minimizing the square root of LSE 
         
         #Symmetry constraint for Q
         M.constraint( Expr.sub(Q, Q.transpose()),  Domain.equalsTo(0,n,n) ) #Q-Q^T = 0
@@ -261,14 +254,10 @@ def master(name,n,wlist,z,Qxk_list,qxk_list, vxk_vector,yklist,mu):
             M.constraint(Expr.add(Expr.add(Expr.dot(Var.flatten(Qrelax),0.5*Y.flatten()),Expr.dot(qrelax,y)),crelax), Domain.greaterThan(0))
     
         # Solve
-        #M.setLogHandler(sys.stdout)            # Add logging
         M.acceptedSolutionStatus(AccSolutionStatus.Anything)
         M.writeTask("App1.ptf")                # Save problem in readable format
         M.solve()
-    
-        #Get results
-        #print("Objective (relax var) value ={0}".format(objrelax.level()**2))
-        #print("Distance term (MOSEK) = {0}".format(np.sum(distance_term.level())))
+
         
         test = 0
         Qsol = Q.level().reshape(n,n)
@@ -278,15 +267,22 @@ def master(name,n,wlist,z,Qxk_list,qxk_list, vxk_vector,yklist,mu):
         qsolrelax = qrelax.level()
         csolrelax = crelax.level()
         S = 0.5*(np.linalg.norm(Qsol-Qsolrelax,2)**2 + np.linalg.norm(qsol-qsolrelax,2)**2 + (csol-csolrelax)**2)
-        print("Distance term (check) = {0}".format(S))
         assert(np.sum(distance_term.level())>=S-1E-9)
         for i in range(p):
             w = wlist[i]
             test+= (z[i]-0.5*w.dot(Qsol).dot(w) - w.dot(qsol) - csol)**2
-        # print("######### UB = {0}".format(test))
-        # print(test,objrelax.level()**2)
-        # print(obj.level()**2,objrelax.level()**2)
+
         sol_time =  M.getSolverDoubleInfo("optimizerTime")
         return Qsol,qsol,csol,Qsolrelax,qsolrelax,csolrelax,test,objrelax.level()[0]**2, S
     
-
+    
+def solve_subproblem_App1(n,Q,q,c,tl):
+    m = gp.Model("LL problem")
+    m.Params.LogToConsole = 0
+    y = m.addMVar(n, lb = 0.0, ub = 1.0, name="y")
+    Qtimeshalf = 0.5*Q
+    m.setObjective(y@Qtimeshalf@y+  q@y +c, GRB.MINIMIZE)
+    m.setParam('NonConvex', 2)
+    m.setParam('TimeLimit', tl)
+    m.optimize()
+    return y.X, m.objVal
