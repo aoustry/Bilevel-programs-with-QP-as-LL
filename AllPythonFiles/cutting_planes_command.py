@@ -1,17 +1,9 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Dec  2 13:54:20 2021
-
-@author: aoust
-"""
-
-
 from Application1_cutting_planes import main_app1
 from Application2_cutting_planes import main_app2
 
 #Call application 1
 
-for i in range(1,10):
+for i in range(1,11):
     name = "PSD_random"+str(i)
     main_app1(name)
     name = "notPSD_random"+str(i)
