@@ -36,6 +36,7 @@ def main_app1(name,r=10,timelimit=18000):
     z = np.load("../Application1_data/"+name+"/z.npy")
     wlist_square_flattened = np.array([(w.reshape(n,1).dot(w.reshape(1,n))).reshape(n**2) for w in wlist])
     
+    print("We are solving instance:", name)
     t0 = time.time()
     relaxation = gp.Model("relax")
     flattenedQvar = relaxation.addMVar(n**2,lb=-GRB.INFINITY,ub=GRB.INFINITY,name='flattenedQmatrix')
