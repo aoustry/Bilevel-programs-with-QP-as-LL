@@ -39,8 +39,9 @@ def main_app2(name_dimacs,name,timelimit=18000):
     assert(np.linalg.norm(M-M.T)<1E-6)
     assert(np.linalg.norm(Q1-Q1.T)<1E-6)
     assert(np.linalg.norm(Q2-Q2.T)<1E-6)
-    t0 = time.time()
     
+    print("We are solving instance:", name)
+    t0 = time.time()
     master = gp.Model("Master problem")
     xvar = master.addMVar(n,lb=0,ub=1,name='x')
     zvar = master.addMVar(1,name='z',lb=-GRB.INFINITY,ub=GRB.INFINITY)
