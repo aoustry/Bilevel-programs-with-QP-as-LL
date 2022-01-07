@@ -6,8 +6,8 @@ Created on Thu Dec  9 11:24:43 2021
 """
 
 
-from Application1_coupled_algo import main_app1
-from Application2_coupled_algo import main_app2
+from Application1_InnerOuterApproxAlgo import main_app1
+from Application2_InnerOuterApproxAlgo import main_app2
 
 #Call application 1
 
