@@ -12,7 +12,7 @@ def save(name,finished,p,value,soltime,iteration, bigQ,q,c):
         f.write("Finished before time limit.\n")
     else:
         f.write("Time limit reached.\n")
-    f.write("Obj value: "+str(value)+"\n")
+    f.write("Obj: "+str(value)+"\n")
     f.write("Average LSE: {0}\n".format(value/p))
     f.write("SolTime: "+str(soltime)+"\n")
     f.write("It. number: "+str(iteration)+"\n")
