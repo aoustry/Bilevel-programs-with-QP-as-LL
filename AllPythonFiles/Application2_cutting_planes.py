@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Dec  2 10:01:47 2021
-
-@author: aoust
-"""
 from DimacsReader import DimacsReader
 import gurobipy as gp
 from gurobipy import GRB
@@ -12,16 +6,21 @@ import time
 import pandas as pd
 
 
-def save(name, finished, value,soltime, itnumber, xsol):
+def save(name,finished,value,ub,soltime,iteration, xsol):
     f = open("../output/Application2/"+name+"/cutting_planes.txt","w+")
-    f.write('Finished before TL = {0}'.format(finished))
+    if finished==True:
+        f.write("Finished before time limit.\n")
+    else:
+        f.write("Time limit reached.\n")    
     f.write("Obj: "+str(value)+"\n")
+    if finished==False:
+        f.write("Upper bound: "+str(ub)+"\n")
     f.write("SolTime: "+str(soltime)+"\n")
-    f.write("It. number: "+str(itnumber)+"\n")
+    f.write("It. number: "+str(iteration)+"\n")
     f.write("Upper level solution: "+str(xsol)+"\n")
     f.close()
 
-def main_app2(name_dimacs,name, timelimit=18000):
+def main_app2(name_dimacs,name,timelimit=18000):
     #Logs
     UpperBoundsLogs,LowerBoundsLogs, EpsLogs, MasterTimeLogs, LLTimeLogs = [],[],[],[],[]
     #Reading graph file
@@ -41,7 +40,6 @@ def main_app2(name_dimacs,name, timelimit=18000):
     assert(np.linalg.norm(Q1-Q1.T)<1E-6)
     assert(np.linalg.norm(Q2-Q2.T)<1E-6)
     t0 = time.time()
-       
     
     master = gp.Model("Master problem")
     xvar = master.addMVar(n,lb=0,ub=1,name='x')
@@ -54,7 +52,7 @@ def main_app2(name_dimacs,name, timelimit=18000):
     coeffC = np.array([0.5*Y[i,i] * diagonalQ2x[i] for i in range(n)])
     master.addConstr(vvar+coeffC@xvar+ (y@M)@xvar + q2@y + y@(0.5*Q2)@y >=0)
     running = True
-    itnumber = 0
+    iteration = 0
     while running and (time.time()-t0<timelimit):
         t1 = time.time()
         master.optimize()
@@ -66,7 +64,7 @@ def main_app2(name_dimacs,name, timelimit=18000):
         tl = 10+max(0,timelimit-(t1-t0))
         y,val = solve_subproblem_App2(n,Q,b,v,tl)
         LLtime = time.time() - t1
-        itnumber+=1
+        iteration+=1
         
         
         #Log
@@ -83,7 +81,7 @@ def main_app2(name_dimacs,name, timelimit=18000):
             coeffC = np.array([0.5*Y[i,i] * diagonalQ2x[i] for i in range(n)])
             master.addConstr(vvar+coeffC@xvar+ (y@M)@xvar + q2@y + y@(0.5*Q2)@y >=0)
     soltime = time.time() - t0
-    save(name,not(running), master.objVal,soltime,itnumber, x)
+    save(name,not(running), master.objVal,master.objVal+max(0,-val),soltime,iteration,x)
     df = pd.DataFrame()
     df['UB'],df['LB'],df["Epsilon"],df["MasterTime"],df['LLTime'] = UpperBoundsLogs, LowerBoundsLogs, EpsLogs, MasterTimeLogs, LLTimeLogs
     df.to_csv("../output/Application2/"+name+"/cutting_plane.csv")
