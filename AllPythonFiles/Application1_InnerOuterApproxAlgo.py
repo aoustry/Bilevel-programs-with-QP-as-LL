@@ -6,7 +6,7 @@ import sys
 import numpy as np
 import time
 
-def save(name,finished, p,value, soltime, bigQ, q,c):
+def save(name,finished,p,value,soltime, bigQ,q,c):
     f = open("../output/Application1/"+name+"/InnerOuterApproxAlgo.txt","w+")
     if finished==True:
         f.write("Finished before time limit.\n")
