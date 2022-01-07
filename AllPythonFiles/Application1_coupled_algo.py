@@ -7,7 +7,7 @@ import numpy as np
 import time
 
 def save(name,finished, p,value, soltime, bigQ, q,c):
-    f = open("../output/Application1/"+name+"/coupledAlgo.txt","w+")
+    f = open("../output/Application1/"+name+"/InnerOuterApproxAlgo.txt","w+")
     if finished==True:
         f.write("Finished before time limit.\n")
     else:
@@ -87,7 +87,7 @@ def main_app1(name,mu,timelimit = 18000):
     save(name,not(running),len(z),obj,soltime,Qsol,qsol,csol)
     df = pd.DataFrame()
     df['MasterObjRes'],df['MasterObjRel'],df["Epsilon"],df["MasterTime"],df['LLTime'] = ValueLogRes, ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs
-    df.to_csv("../output/Application1/"+name+"/coupledAlgo.csv")
+    df.to_csv("../output/Application1/"+name+"/InnerOuterApproxAlgo.csv")
     
 
 def restriction(name,n,wlist,z):

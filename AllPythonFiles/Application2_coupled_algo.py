@@ -8,7 +8,7 @@ from scipy.linalg import sqrtm
 from DimacsReader import *
 
 def save(name,finished,value,soltime,xsol):
-    f = open("../output/Application2/"+name+"/coupledAlgo.txt","w+")
+    f = open("../output/Application2/"+name+"/InnerOuterApproxAlgo.txt","w+")
     if finished==True:
         f.write("Finished before time limit.\n")
     else:
@@ -99,7 +99,7 @@ def main_app2(name_dimacs,name,mu,timelimit=18000):
     save(name,not(running),obj,soltime,x)
     df = pd.DataFrame()
     df['MasterObjRes'],df['MasterObjRel'],df["Epsilon"],df["MasterTime"],df['LLTime'] = ValueLogRes,ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs
-    df.to_csv("../output/Application2/"+name+"/coupledAlgo.csv")
+    df.to_csv("../output/Application2/"+name+"/InnerOuterApproxAlgo.csv")
 
 def restriction(M,n,Q1,Q2,q1,q2,diagonalQ2x):
     "Solve the single level restriction"
