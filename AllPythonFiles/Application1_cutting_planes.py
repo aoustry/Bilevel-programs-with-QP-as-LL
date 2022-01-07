@@ -6,13 +6,15 @@ from itertools import combinations
 import pandas as pd
 
 
-def save(name,finished,p,value,soltime,iteration,bigQ,q,c):
+def save(name,finished,p,value,ub,soltime,iteration,bigQ,q,c):
     f = open("../output/Application1/"+name+"/cutting_plane.txt","w+")
     if finished==True:
         f.write("Finished before time limit.\n")
     else:
         f.write("Time limit reached.\n")
     f.write("Obj value returned by the CP solver: "+str(value)+"\n")
+    if finished==False:
+        f.write("Upper bound: "+str(ub)+"\n")
     f.write("Average LSE: {0}\n".format(value/p))
     f.write("SolTime: "+str(soltime)+"\n")
     f.write("It. number: "+str(iteration)+"\n")
@@ -73,7 +75,7 @@ def main_app1(name,timelimit=18000):
             Y = (y.reshape(n,1).dot(y.reshape(1,n))).flatten()
             master.addConstr(0.5*Y@flattenedQvar + y@qvar + cvar >=0)
     soltime = time.time() - t0
-    save(name,not(running),p,master.objVal,soltime,iteration, flattenedQ,q,c)
+    save(name,not(running),p,master.objVal,ub,soltime,iteration, flattenedQ,q,c)
     df = pd.DataFrame()
     df['UB'],df['LB'],df["Epsilon"],df["MasterTime"],df['LLTime'] = UpperBoundsLogs, LowerBoundsLogs, EpsLogs, MasterTimeLogs, LLTimeLogs
     df.to_csv("../output/Application1/"+name+"/cutting_plane.csv")
