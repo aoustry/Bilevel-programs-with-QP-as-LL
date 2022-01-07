@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Feb  6 15:33:35 2021
-
-@author: aoust
-"""
-
 from mosek.fusion import *
 import sys
 import numpy as np 
@@ -16,7 +9,7 @@ def save(name, value,soltime, xsol):
     f = open("../Application2_data/"+name+"/reformulation_obj_value.txt","w+")
     f.write("Obj: "+str(value)+"\n")
     f.write("SolTime: "+str(soltime)+"\n")
-    f.write("Upper level solution: "+str(xsol)+"\n")
+    f.write("\nUpper level solution: "+str(xsol)+"\n")
     f.close()
 
 def main(name_dimacs,name):
@@ -45,7 +38,7 @@ def main(name_dimacs,name):
         #b = np.zeros(n)
         
         #Upper level var
-        v = model.variable("v", 1, Domain.unbounded())
+        z = model.variable("z", 1, Domain.unbounded())
         x = model.variable("x", n, Domain.greaterThan(0.0))
             
         #LL variables
@@ -65,17 +58,17 @@ def main(name_dimacs,name):
         ##t >= 0.5 x^TQ_1x iif t >= 0.5 ||P_1 x ||^2   iif (t,1, P_1x) \in RotatedCone(n+2)
         ## This constraint is necessary saturated at the optimum, thus we have t = 0.5 x^TQ_1x
         model.constraint(Expr.vstack(t,1, Expr.mul(P1,x)), Domain.inRotatedQCone(n+2))
-        v_and_player1_cost = Expr.add(v, Expr.add(t,Expr.dot(q1,x))) #upper level objective function
+        z_and_player1_cost = Expr.add(z, Expr.add(t,Expr.dot(q1,x))) #upper level objective function
         
         #Objective
-        model.objective( "objfunct", ObjectiveSense.Minimize, v_and_player1_cost )
+        model.objective( "objfunct", ObjectiveSense.Minimize, z_and_player1_cost )
     
         #Simplex constraint for x
         model.constraint( Expr.sum(x),  Domain.equalsTo(1) )
          
-        # -v + lambda1 + 2 alpha + beta \leq 0 
+        # -z + lambda1 + 2 alpha + beta \leq 0 
         sum_of_duals = Expr.add(lam,Expr.add(Expr.mul(2,alpha),beta))
-        model.constraint(Expr.add(Expr.mul(-1,v),sum_of_duals),Domain.lessThan(0.0))
+        model.constraint(Expr.add(Expr.mul(-1,z),sum_of_duals),Domain.lessThan(0.0))
         
         #Constraints to define the several parts of the PSD matrix
         Q2x = Expr.add([Expr.mul(x.index(i),Matrix.sparse(n, n, [i], [i], [0.5*diagonalQ2x[i]])) for i in range(n)])
@@ -92,14 +85,14 @@ def main(name_dimacs,name):
         #Get results
         xres = x.level()
         tres = t.level()[0]
-        vres = v.level()
-        objres = 0.5*xres.dot(Q1).dot(xres) + vres + q1.dot(xres)
+        zres = z.level()
+        objres = 0.5*xres.dot(Q1).dot(xres) + zres + q1.dot(xres)
         print("Min eigenvalue = {0}".format(min(np.linalg.eigvalsh(Qsol))))
         assert(abs(tres-0.5*xres.dot(Q1).dot(xres))<1E-7)
         assert(abs(PSDVar.level()[-1] - (alpha.level()[0]+beta.level()[0]))<1E-7)
         print("Upper level solution : ",x.level())
         print("Objective value =",objres)
-        print("v :", v.level())
+        print("z :", z.level())
         save(name,objres,soltime, x.level())
             
 
