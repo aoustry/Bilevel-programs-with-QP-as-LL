@@ -17,7 +17,7 @@ def save(name,finished,value,ub,soltime,iteration, xsol):
         f.write("Upper bound: "+str(ub)+"\n")
     f.write("SolTime: "+str(soltime)+"\n")
     f.write("It. number: "+str(iteration)+"\n")
-    f.write("Upper level solution: "+str(xsol)+"\n")
+    f.write("\nUpper level solution: "+str(xsol)+"\n")
     f.close()
 
 def main_app2(name_dimacs,name,r=10,timelimit=18000):
