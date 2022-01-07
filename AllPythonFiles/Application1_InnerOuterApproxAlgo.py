@@ -13,7 +13,8 @@ def save(name,finished,p,value,relax,soltime,iteration, bigQ,q,c):
     else:
         f.write("Time limit reached.\n")
     f.write("Obj: "+str(value)+"\n")
-    f.write("Obj relaxation: "+str(relax)+"\n")
+    if iteration>0 and finished==False:
+        f.write("Obj relaxation: "+str(relax)+"\n")
     f.write("Average LSE: {0}\n".format(value/p))
     f.write("SolTime: "+str(soltime)+"\n")
     f.write("It. number: "+str(iteration)+"\n")
@@ -57,7 +58,7 @@ def main_app1(name,mu,timelimit = 18000):
     mu2 = 100*mu
     Qxk_list,qxk_list,vxk_list,yklist = [],[],[],[]
     while running and (time.time()-t0<timelimit):
-        print("Iteration number {0}".format(iteration))
+        print("Iteration number {0}".format(iteration+1))
         t1 = time.time()
         #we solve the master problem
         Qsol,qsol,csol,Qsolrelax,qsolrelax,csolrelax,obj,obj_relax,dist = master(name,n,wlist,z,Qxk_list,qxk_list,np.array(vxk_list),yklist,mu)
