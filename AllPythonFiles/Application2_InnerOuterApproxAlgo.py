@@ -44,6 +44,7 @@ def main_app2(name_dimacs,name,mu,timelimit=18000):
     xres, zres, obj = restriction(M,n,Q1,Q2,q1,q2,diagonalQ2x)
     x = xres
     mastertime = time.time() - t0
+    obj_relax=-100000 #random value
     
     #we check if the matrix Q2 is PD (i.e. sufficient condition satisfied) using Cholesky factorization:
     try:
