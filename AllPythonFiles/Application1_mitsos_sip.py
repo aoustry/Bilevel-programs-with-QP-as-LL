@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Dec  2 10:01:47 2021
-
-@author: aoust
-"""
-
 import gurobipy as gp
 from gurobipy import GRB
 import numpy as np
@@ -13,14 +6,17 @@ from itertools import combinations
 import pandas as pd
 
 
-def save(name,finished, p,value, soltime,itnumber, bigQ, q,c):
+def save(name,finished,p,value,soltime,iteration, bigQ,q,c):
     f = open("../output/Application1/"+name+"/mitsos_sip.txt","w+")
-    f.write('Finished before TL = {0}'.format(finished))
+    if finished==True:
+        f.write("Finished before time limit.\n")
+    else:
+        f.write("Time limit reached.\n")
     f.write("Obj value returned by the CP solver: "+str(value)+"\n")
-    f.write("Average LSE = {0}".format(value/p))
+    f.write("Average LSE: {0}\n".format(value/p))
     f.write("SolTime: "+str(soltime)+"\n")
-    f.write("It. number: "+str(itnumber)+"\n")
-    f.write("Q matrix recovered: " +str(bigQ) +"\n")
+    f.write("It. number: "+str(iteration)+"\n")
+    f.write("\nQ matrix recovered: " +str(bigQ) +"\n")
     f.write("q vector recovered: " +str(q) +"\n")
     f.write("Scalar c recovered: " +str(c) +"\n")
     f.close()
@@ -31,11 +27,13 @@ def main_app1(name,r=10,timelimit=18000):
     yubd = []
     ub = np.inf
     eps_r = 0.1
+    
     #Loading data
     wlist = np.load("../Application1_data/"+name+"/w.npy")
     p,n = wlist.shape
     z = np.load("../Application1_data/"+name+"/z.npy")
-    wlist_square_flattened = np.array([(w.reshape(n,1).dot(w.reshape(1,n))).reshape(n**2) for w in wlist]) 
+    wlist_square_flattened = np.array([(w.reshape(n,1).dot(w.reshape(1,n))).reshape(n**2) for w in wlist])
+    
     t0 = time.time()
     relaxation = gp.Model("relax")
     flattenedQvar = relaxation.addMVar(n**2,lb=-GRB.INFINITY,ub=GRB.INFINITY,name='flattenedQmatrix')
@@ -46,7 +44,8 @@ def main_app1(name,r=10,timelimit=18000):
     for (i,j) in combinations(range(n),2):
           relaxation.addConstr(flattenedQvar[i*n+j]==flattenedQvar[j*n+i])
     relaxation.setObjective(spread@spread, GRB.MINIMIZE)
-    running, itnumber = True,0
+    running, iteration = True, 0
+    
     while running and (time.time()-t0<timelimit):
         #Solve relaxation (LBD)
         t1 = time.time()
@@ -55,8 +54,9 @@ def main_app1(name,r=10,timelimit=18000):
         lb = relaxation.objVal
         flattenedQ,q,c = flattenedQvar.X, qvar.X, cvar.X
         Q = flattenedQ.reshape((n,n))
-        itnumber+=1
-        #Solve LLP
+        iteration+=1
+        
+        #Solve (LLP)
         t1 = time.time()
         tl = 10+max(0,timelimit-(t1-t0))
         y,val = solve_subproblem_App1(n,Q,q,c,tl)
@@ -75,6 +75,7 @@ def main_app1(name,r=10,timelimit=18000):
             feasible, fQres,qres,cres = ubd_problem(n,p,wlist,wlist_square_flattened,z,yubd,eps_r)
             restime = time.time() - t1
             if feasible:
+                #Solve (LLP)
                 t1 = time.time()
                 tl = 10+max(0,timelimit-(t1-t0))
                 Qres = fQres.reshape((n,n))
@@ -99,7 +100,7 @@ def main_app1(name,r=10,timelimit=18000):
         LLTimeLogs.append(LLtime1+LLtime2)
              
     soltime = time.time() - t0
-    save(name,not(running), p,relaxation.objVal, soltime, itnumber,flattenedQ, q,c)
+    save(name,not(running),p,relaxation.objVal,soltime,iteration, flattenedQ,q,c)
     df = pd.DataFrame()
     df['UB'],df['LB'],df["Epsilon"],df["MasterTime"],df['LLTime'] = UpperBoundsLogs, LowerBoundsLogs, EpsLogs, MasterTimeLogs, LLTimeLogs
     df.to_csv("../output/Application1/"+name+"/mitsos_sip.csv")
