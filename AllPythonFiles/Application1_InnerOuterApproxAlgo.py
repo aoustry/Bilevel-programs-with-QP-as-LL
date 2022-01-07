@@ -36,7 +36,8 @@ def main_app1(name,mu,timelimit = 18000):
     t0 = time.time()
     Qsol,qsol,csol,obj=restriction(name,n,wlist,z)
     mastertime = time.time() - t0
-
+    obj_relax=-100000 #random number
+    
     #we check if the matrix Q2 is PD (i.e. sufficient condition satisfied) using Cholesky factorization:
     try:
         np.linalg.cholesky(Qsol)
