@@ -11,7 +11,7 @@ from Application2_coupled_algo import main_app2
 
 #Call application 1
 
-for i in range(1,10):
+for i in range(1,11):
     name = "PSD_random"+str(i)
     main_app1(name,0.1)
     name = "notPSD_random"+str(i)
