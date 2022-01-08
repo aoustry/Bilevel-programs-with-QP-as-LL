@@ -50,10 +50,11 @@ def main_app2(name_dimacs,name,mu,timelimit=18000):
     #we check if the matrix Q2 is PD (i.e. sufficient condition satisfied) using Cholesky factorization:
     try:
         np.linalg.cholesky(Q2+np.diag(diagonalQ2x*xres))
-        posdef = True
+        running = False
+        if min(np.linalg.eig(Q2+np.diag(diagonalQ2x*xres))[0])<1E-7: #the matrix can be considered positive SEMIdefinite
+            running = False
     except np.linalg.LinAlgError:
-        posdef = False
-    running = not(posdef)
+        running = True
     
     ValueLogRes.append(obj)
     ValueLogRel.append(-np.inf)
