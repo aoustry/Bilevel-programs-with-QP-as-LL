@@ -42,12 +42,11 @@ def main_app1(name,mu,timelimit = 18000):
     #we check if the matrix Q2 is PD (i.e. sufficient condition satisfied) using Cholesky factorization:
     try:
         np.linalg.cholesky(Qsol)
-        posdef = True
+        running = False
         if min(np.linalg.eig(Qsol)[0])<1E-7: #the matrix can be considered positive SEMIdefinite
-            posdef = False
-    except np.linalg.LinAlgError:
-        posdef = False
-    running = not(posdef)
+            running = True
+    except np.linalg.LinAlgError: #Cholesky factorization function will return this error if the matrix is not positive definite
+        running = True
 
     ValueLogRes.append(obj)
     ValueLogRel.append(-np.inf)
