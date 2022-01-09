@@ -43,7 +43,7 @@ def main_app1(name,mu,timelimit = 18000):
     try:
         np.linalg.cholesky(Qsol)
         running = False
-        if min(np.linalg.eig(Qsol)[0])<1E-7: #the matrix can be considered positive SEMIdefinite
+        if min(np.linalg.eig(Qsol)[0])<1E-8: #the matrix can be considered positive SEMIdefinite
             running = True
     except np.linalg.LinAlgError: #Cholesky factorization function will return this error if the matrix is not positive definite
         running = True
