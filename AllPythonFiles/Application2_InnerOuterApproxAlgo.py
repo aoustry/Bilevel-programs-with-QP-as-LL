@@ -51,7 +51,7 @@ def main_app2(name_dimacs,name,mu,timelimit=18000):
     try:
         np.linalg.cholesky(Q2+np.diag(diagonalQ2x*xres))
         running = False
-        if min(np.linalg.eig(Q2+np.diag(diagonalQ2x*xres))[0])<1E-7: #the matrix can be considered positive SEMIdefinite
+        if min(np.linalg.eig(Q2+np.diag(diagonalQ2x*xres))[0])<1E-8: #the matrix can be considered positive SEMIdefinite
             running = True
     except np.linalg.LinAlgError: #the Cholesky factorization function will return this error if the matrix is not positive definite
         running = True
