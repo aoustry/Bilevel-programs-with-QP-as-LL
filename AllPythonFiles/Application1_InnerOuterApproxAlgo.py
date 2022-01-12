@@ -6,7 +6,7 @@ import sys
 import numpy as np
 import time
 
-def save(name,finished,p,value,relax,soltime,iteration, bigQ,q,c):
+def save(name,finished,p,value,relax,soltime,iteration,inner, bigQ,q,c):
     f = open("../output/Application1/"+name+"/InnerOuterApproxAlgo.txt","w+")
     if finished==True:
         f.write("Finished before time limit.\n")
@@ -18,6 +18,7 @@ def save(name,finished,p,value,relax,soltime,iteration, bigQ,q,c):
     f.write("Average LSE: {0}\n".format(value/p))
     f.write("SolTime: "+str(soltime)+"\n")
     f.write("It. number: "+str(iteration)+"\n")
+    f.write("Percent. inner: "+str(inner)+"\n")
     f.write("\nQ matrix recovered: " +str(bigQ) +"\n")
     f.write("q vector recovered: " +str(q) +"\n")
     f.write("Scalar c recovered: " +str(c) +"\n")
@@ -37,7 +38,9 @@ def main_app1(name,mu,timelimit = 18000):
     t0 = time.time()
     Qsol,qsol,csol,obj=restriction(name,n,wlist,z)
     mastertime = time.time() - t0
-    obj_relax=0 #random number
+    mastertime_tot = mastertime
+    LLtime_tot = 0
+    obj_relax = 0 #random number
     
     #we check if the matrix Q is PD (i.e. sufficient condition satisfied):
     if min(np.linalg.eig(Qsol)[0])>1E-6: #the matrix is positive definite
@@ -62,12 +65,15 @@ def main_app1(name,mu,timelimit = 18000):
         #we solve the master problem
         Qsol,qsol,csol,Qsolrelax,qsolrelax,csolrelax,obj,obj_relax,dist = master(name,n,wlist,z,Qxk_list,qxk_list,np.array(vxk_list),yklist,mu)
         mastertime = time.time() - t1
+        mastertime_tot = mastertime_tot + mastertime
         
         tl = 10+max(0,timelimit-(time.time()-t0))
         #we solve the inner problem
         t1 = time.time()
         yrelax,epsrel = solve_subproblem_App1(n,Qsolrelax,qsolrelax,csolrelax,tl)
         LLtime = time.time() - t1
+        LLtime_tot = LLtime_tot + LLtime
+        
         Qxk_list.append(Qsolrelax)
         qxk_list.append(qsolrelax)
         vxk_list.append(epsrel-csolrelax)
@@ -87,7 +93,9 @@ def main_app1(name,mu,timelimit = 18000):
         print("Distance term (check) = {0}".format(dist))
         print("Epsilon term (check) = {0}".format(epsrel))
     soltime = time.time() - t0
-    save(name,not(running),len(z),obj,obj_relax,soltime,iteration, Qsol,qsol,csol)
+    percentLL = LLtime_tot/(mastertime_tot + LLtime_tot)
+    
+    save(name,not(running),len(z),obj,obj_relax,soltime,iteration,percentLL, Qsol,qsol,csol)
     df = pd.DataFrame()
     df['MasterObjRes'],df['MasterObjRel'],df["Epsilon"],df["MasterTime"],df['LLTime'] = ValueLogRes, ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs
     df.to_csv("../output/Application1/"+name+"/InnerOuterApproxAlgo.csv")
