@@ -7,7 +7,7 @@ import pandas as pd
 from scipy.linalg import sqrtm
 from DimacsReader import *
 
-def save(name,finished,value,relax,soltime,iteration, xsol):
+def save(name,finished,value,relax,soltime,iteration,innner, xsol):
     f = open("../output/Application2/"+name+"/InnerOuterApproxAlgo.txt","w+")
     if finished==True:
         f.write("Finished before time limit.\n")
@@ -18,6 +18,7 @@ def save(name,finished,value,relax,soltime,iteration, xsol):
         f.write("Obj relaxation: "+str(relax)+"\n")
     f.write("SolTime: "+str(soltime)+"\n")
     f.write("It. number: "+str(iteration)+"\n")
+    f.write("Percent. inner: "+str(inner)+"\n")
     f.write("\nUpper level solution: "+str(xsol)+"\n")
     f.close()
 
@@ -45,6 +46,8 @@ def main_app2(name_dimacs,name,mu,timelimit=18000):
     xres, zres, obj = restriction(M,n,Q1,Q2,q1,q2,diagonalQ2x)
     x = xres
     mastertime = time.time() - t0
+    mastertime_tot = mastertime
+    LLtime_tot = 0
     obj_relax=0 
     
     #we check if the matrix Q2 is PD (i.e. sufficient condition satisfied):
@@ -70,6 +73,7 @@ def main_app2(name_dimacs,name,mu,timelimit=18000):
         #we solve the master problem
         x,z,xrelax,crelax,obj,obj_relax,dist = master(M,n,Q1,Q2,q1,q2,diagonalQ2x,Qxk_list,qxk_list,np.array(vxk_list),yklist,mu)
         mastertime = time.time() - t1
+        mastertime_tot = mastertime_tot + mastertime
         
         Qrelax = Q2+np.diag(diagonalQ2x*xrelax)
         brelax = q2 + (M.T)@xrelax
@@ -79,6 +83,7 @@ def main_app2(name_dimacs,name,mu,timelimit=18000):
         t1 = time.time()
         yrelax,epsrel = solve_subproblem_App2(n,Qrelax,brelax,crelax,tl) #we get epsrel = (v+crelax)
         LLtime = time.time() - t1
+        LLtime_tot = LLtime_tot + LLtime
         Qxk_list.append(Qrelax)
         qxk_list.append(brelax)
         vxk_list.append(epsrel-crelax)#we solve the LL problem involving h(xrelax)=crelax, thus, to obtain v, we have to subtract from the LLobj h(xrelax)
@@ -99,7 +104,10 @@ def main_app2(name_dimacs,name,mu,timelimit=18000):
         iteration+=1
     
     soltime = time.time() - t0
-    save(name,not(running),obj,obj_relax,soltime,iteration, x)
+    percentLL = LLtime_tot/(mastertime_tot+LLtime_tot)
+
+    
+    save(name,not(running),obj,obj_relax,soltime,iteration,percentLL, x)
     df = pd.DataFrame()
     df['MasterObjRes'],df['MasterObjRel'],df["Epsilon"],df["MasterTime"],df['LLTime'] = ValueLogRes,ValueLogRel, EpsLogs, MasterTimeLogs, LLTimeLogs
     df.to_csv("../output/Application2/"+name+"/InnerOuterApproxAlgo.csv")
