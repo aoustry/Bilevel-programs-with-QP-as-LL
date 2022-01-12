@@ -6,7 +6,7 @@ import time
 import pandas as pd
 
 
-def save(name,finished,value,ub,soltime,iteration, xsol):
+def save(name,finished,value,ub,soltime,iteration,inner, xsol):
     f = open("../output/Application2/"+name+"/cutting_planes.txt","w+")
     if finished==True:
         f.write("Finished before time limit.\n")
@@ -17,6 +17,7 @@ def save(name,finished,value,ub,soltime,iteration, xsol):
         f.write("Upper bound: "+str(ub)+"\n")
     f.write("SolTime: "+str(soltime)+"\n")
     f.write("It. number: "+str(iteration)+"\n")
+    f.write("Percent. inner: "+str(inner)+"\n")  
     f.write("\nUpper level solution: "+str(xsol)+"\n")
     f.close()
 
@@ -41,6 +42,8 @@ def main_app2(name_dimacs,name,timelimit=18000):
     assert(np.linalg.norm(Q2-Q2.T)<1E-6)
     
     print("We are solving instance:", name)
+    mastertime_tot = 0
+    LLtime_tot = 0
     t0 = time.time()
     master = gp.Model("Master problem")
     xvar = master.addMVar(n,lb=0,ub=1,name='x')
@@ -55,17 +58,22 @@ def main_app2(name_dimacs,name,timelimit=18000):
     running = True
     iteration = 0
     while running and (time.time()-t0<timelimit):
+        iteration+=1
         t1 = time.time()
+        print("----------------Master problem--------------")
         master.optimize()
         mastertime = time.time() - t1
+        mastertime_tot = mastertime_tot + mastertime
         x,z = xvar.X, zvar.X
         Q = Q2+np.diag(diagonalQ2x*x)
         b = q2 + (M.T)@x
+        
         t1 = time.time()
         tl = 10+max(0,timelimit-(t1-t0))
+        print("----------------Inner problem--------------", name)
         y,val = solve_subproblem_App2(n,Q,b,z,tl)
         LLtime = time.time() - t1
-        iteration+=1
+        LLtime_tot = LLtime_tot + LLtime
         
         
         #Log
@@ -82,7 +90,9 @@ def main_app2(name_dimacs,name,timelimit=18000):
             coeffC = np.array([0.5*Y[i,i] * diagonalQ2x[i] for i in range(n)])
             master.addConstr(zvar+coeffC@xvar+ (y@M)@xvar + q2@y + y@(0.5*Q2)@y >=0)
     soltime = time.time() - t0
-    save(name,not(running), master.objVal,master.objVal+max(0,-val),soltime,iteration,x)
+    percentLL = LLtime_tot/(LLtime_tot+mastertime_tot)
+    
+    save(name,not(running), master.objVal,master.objVal+max(0,-val),soltime,iteration,percentLL, x)
     df = pd.DataFrame()
     df['UB'],df['LB'],df["Epsilon"],df["MasterTime"],df['LLTime'] = UpperBoundsLogs, LowerBoundsLogs, EpsLogs, MasterTimeLogs, LLTimeLogs
     df.to_csv("../output/Application2/"+name+"/cutting_plane.csv")
