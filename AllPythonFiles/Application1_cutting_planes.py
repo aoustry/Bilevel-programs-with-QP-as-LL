@@ -6,7 +6,7 @@ from itertools import combinations
 import pandas as pd
 
 
-def save(name,finished,p,value,ub,soltime,iteration,bigQ,q,c):
+def save(name,finished,p,value,ub,soltime,iteration,inner, bigQ,q,c):
     f = open("../output/Application1/"+name+"/cutting_plane.txt","w+")
     if finished==True:
         f.write("Finished before time limit.\n")
@@ -18,6 +18,7 @@ def save(name,finished,p,value,ub,soltime,iteration,bigQ,q,c):
     f.write("Average LSE: {0}\n".format(value/p))
     f.write("SolTime: "+str(soltime)+"\n")
     f.write("It. number: "+str(iteration)+"\n")
+    f.write("Percent. inner: "+str(inner)+"\n")
     f.write("\nQ matrix recovered: " +str(bigQ) +"\n")
     f.write("q vector recovered: " +str(q) +"\n")
     f.write("Scalar c recovered: " +str(c) +"\n")
@@ -35,6 +36,8 @@ def main_app1(name,timelimit=18000):
     
     print("We are solving instance:", name)
     t0 = time.time()
+    mastertime_tot = 0
+    LLtime_tot = 0
     master = gp.Model("Master problem")
     #variables
     flattenedQvar = master.addMVar(n**2,lb=-GRB.INFINITY,ub=GRB.INFINITY,name='flattenedQmatrix')
@@ -54,6 +57,7 @@ def main_app1(name,timelimit=18000):
         t1 = time.time()
         master.optimize()
         mastertime = time.time() - t1
+        mastertime_tot = mastertime_tot + mastertime
         flattenedQ,q,c = flattenedQvar.X, qvar.X, cvar.X
         Q = flattenedQ.reshape((n,n))
         
@@ -61,6 +65,7 @@ def main_app1(name,timelimit=18000):
         tl = 10+max(0,timelimit-(t1-t0))
         y,val = solve_subproblem_App1(n,Q,q,c,tl)
         LLtime = time.time() - t1
+        LLtime_tot = LLtime_tot + LLtime
         
         #computing an Upper Bound
         ub = objective_value(n,Q,q,c+max(0,-val),wlist,z)
@@ -76,7 +81,9 @@ def main_app1(name,timelimit=18000):
             Y = (y.reshape(n,1).dot(y.reshape(1,n))).flatten()
             master.addConstr(0.5*Y@flattenedQvar + y@qvar + cvar >=0)
     soltime = time.time() - t0
-    save(name,not(running),p,master.objVal,ub,soltime,iteration, flattenedQ,q,c)
+    percentLL = LLtime_tot/(LLtime_tot + mastertime_tot)
+    
+    save(name,not(running),p,master.objVal,ub,soltime,iteration,percentLL, flattenedQ,q,c)
     df = pd.DataFrame()
     df['UB'],df['LB'],df["Epsilon"],df["MasterTime"],df['LLTime'] = UpperBoundsLogs, LowerBoundsLogs, EpsLogs, MasterTimeLogs, LLTimeLogs
     df.to_csv("../output/Application1/"+name+"/cutting_plane.csv")
