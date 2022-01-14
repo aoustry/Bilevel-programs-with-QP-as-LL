@@ -4,8 +4,8 @@ import os
 
 def create_files(name,n,p,Qref,qref,cref,wlist, noise,z):
     #Write the .dat file
-    os.mkdir("Application1_data/"+name)
-    f = open("Application1_data/"+name+"/instance.dat","w")
+    os.mkdir("../Application1_data/"+name)
+    f = open("../Application1_data/"+name+"/instance.dat","w")
     f.write("param n := %d;\n"%n)
     f.write("param p_max := %d;\n"%p)
     f.write("param r_dim := 0;\n")
@@ -54,12 +54,12 @@ def create_files(name,n,p,Qref,qref,cref,wlist, noise,z):
     f.close()
     
     #Write the numpy files 
-    np.save("Application1_data/"+name+"/bigQref",Qref)
-    np.save("Application1_data/"+name+"/qref",qref)
-    np.save("Application1_data/"+name+"/cref",cref)
-    np.save("Application1_data/"+name+"/w",wlist)
-    np.save("Application1_data/"+name+"/noise",noise)
-    np.save("Application1_data/"+name+"/z",z)
+    np.save("../Application1_data/"+name+"/bigQref",Qref)
+    np.save("../Application1_data/"+name+"/qref",qref)
+    np.save("../Application1_data/"+name+"/cref",cref)
+    np.save("../Application1_data/"+name+"/w",wlist)
+    np.save("../Application1_data/"+name+"/noise",noise)
+    np.save("../Application1_data/"+name+"/z",z)
  
 def create_files_PSD_instances(n,nb):
     name = "PSD_random"+str(nb)
@@ -80,8 +80,8 @@ def create_files_PSD_instances(n,nb):
     create_files(name,n,p,Qref,qref,cref,wlist, noise,z)
     
     
-def create_files_nonPSD_instances(n,nb):
-    name = "nonPSD_random"+str(nb)
+def create_files_notPSD_instances(n,nb):
+    name = "notPSD_random"+str(nb)
     seed = 10+nb
     asym = 2*np.random.rand(n,n) - 1
     Qref = asym + asym.transpose()
@@ -100,14 +100,22 @@ def create_files_nonPSD_instances(n,nb):
 moment=time.strftime("%Y-%b-%d__%H_%M_%S",time.localtime()) #to have different .dat files for each python run
 create_files_PSD_instances(5, 1)
 create_files_PSD_instances(5, 2)
-create_files_PSD_instances(10, 3)
-create_files_PSD_instances(10, 4)
-create_files_PSD_instances(15, 5)
-create_files_PSD_instances(15, 6)
+create_files_PSD_instances(5, 3)
+create_files_PSD_instances(5, 4)
+create_files_PSD_instances(10, 5)
+create_files_PSD_instances(10, 6)
+create_files_PSD_instances(13, 7)
+create_files_PSD_instances(13, 8)
+create_files_PSD_instances(15, 9)
+create_files_PSD_instances(15, 10)
 
-create_files_nonPSD_instances(5,1)
-create_files_nonPSD_instances(5, 2)
-create_files_nonPSD_instances(10, 3)
-create_files_nonPSD_instances(10, 4)
-create_files_nonPSD_instances(15, 5)
-create_files_nonPSD_instances(15, 6)
+create_files_notPSD_instances(5, 1)
+create_files_notPSD_instances(5, 2)
+create_files_notPSD_instances(5, 3)
+create_files_notPSD_instances(5, 4)
+create_files_notPSD_instances(10, 5)
+create_files_notPSD_instances(10, 6)
+create_files_notPSD_instances(13, 7)
+create_files_notPSD_instances(13, 8)
+create_files_notPSD_instances(15, 9)
+create_files_notPSD_instances(15, 10)
