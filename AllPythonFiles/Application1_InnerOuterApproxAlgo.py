@@ -103,7 +103,8 @@ def main_app1(name,mu,timelimit = 18000):
 
 def restriction(name,n,wlist,z):
     "Solve the single level restriction"
-    p = len(z) 
+    p = len(z)
+    #for each vector w, we create a matrix n x n (given by w^T * w) and then a vector n**2
     wlist_square_flattened = np.array([(w.reshape(n,1).dot(w.reshape(1,n))).reshape(n**2) for w in wlist]) 
     
     #Definition of the LL polytope : [0,1]^n box
@@ -113,19 +114,18 @@ def restriction(name,n,wlist,z):
     
     with Model("App1") as M:
         
-        #Upper level var
+        #Upper-level variables
         obj = M.variable("t", 1, Domain.unbounded())
         Q = M.variable("Q", [n,n], Domain.unbounded())
         q = M.variable("q", n, Domain.unbounded())
         c = M.variable("c", Domain.unbounded())
         
-        #LL variables
+        #Lower-level variables
         lam = M.variable("lambda", len(b), Domain.greaterThan(0.0))
         alpha = M.variable("alpha", Domain.greaterThan(0.0))
         beta = M.variable("beta", Domain.unbounded())
         
-        #Vars for PSD constraint
-    
+        #Variables for PSD constraint
         PSDVar = M.variable(Domain.inPSDCone(n+1)) #the whole matrix that must be PSD in (27)
         PSDVar_main = PSDVar.slice([0,0], [n,n]) #we take the first submatrix n x n in each component of the sum in (27) i.e. 0.5*Q, 0_n, alpha*I_n
         PSDVar_vec = Var.flatten(PSDVar.slice([0,n], [n,n+1])) #we take the second submatrix n x 1 i.e. 0.5*q, \sum_r(lambda_r*A)
@@ -134,12 +134,11 @@ def restriction(name,n,wlist,z):
         #Objective
         deg0term = Expr.mul(c,np.ones(p))
         deg1term = Expr.mul(wlist, q)
-        deg2term = Expr.mul(0.5,Expr.mul(wlist_square_flattened, Var.flatten(Q)))
-        
+        deg2term = Expr.mul(0.5,Expr.mul(wlist_square_flattened, Var.flatten(Q)))   
         prediction_term =  Expr.add(deg2term,Expr.add(deg1term,deg0term)) #predicted z (p points)
-        M.constraint( Expr.vstack(obj, Expr.sub(prediction_term, z)), Domain.inQCone() ) #see below -- vstack put obj "above" (z-zpredicted) 
-        M.objective( ObjectiveSense.Minimize, obj )
+        M.constraint( Expr.vstack(obj, Expr.sub(prediction_term, z)), Domain.inQCone() ) #vstack put obj "above" (z-zpredicted) 
         #we minimize obj s.t. obj**2 >= \sum_p (z_p-zpredicted_p)**2 -> It is like we are minimizing the square root of LSE 
+        M.objective( ObjectiveSense.Minimize, obj )
         
         #Symmetry constraint for Q
         M.constraint( Expr.sub(Q, Q.transpose()),  Domain.equalsTo(0,n,n) ) #Q-Q^T = 0
@@ -159,7 +158,6 @@ def restriction(name,n,wlist,z):
     
         #Get results
         print("Objective value restriction ={0}".format(obj.level()**2))
-        #print(PSDVar.level().reshape(n+1,n+1))
         test = 0
         Qsol = Q.level().reshape(n,n)
         qsol = q.level()
@@ -174,8 +172,7 @@ def restriction(name,n,wlist,z):
 def master(name,n,wlist,z,Qxk_list,qxk_list, vxk_vector,yklist,mu):
     "Solve the master problem"
     p = len(z)
-    wlist_square_flattened = np.array([(w.reshape(n,1).dot(w.reshape(1,n))).reshape(n**2) for w in wlist]) 
-    # #for each vector w, we create a matrix n x n (given by w^T * w) and then a vector n**2
+    wlist_square_flattened = np.array([(w.reshape(n,1).dot(w.reshape(1,n))).reshape(n**2) for w in wlist]
     
     #Definition of the LL polytope : [0,1]^n box
     A = np.concatenate([np.eye(n),-np.eye(n)])
@@ -184,12 +181,12 @@ def master(name,n,wlist,z,Qxk_list,qxk_list, vxk_vector,yklist,mu):
     
     with Model("App1") as M:
         
-        #Auxiliary var
+        #Auxiliary variables
         obj = M.variable("obj", 1, Domain.unbounded())
         objrelax = M.variable("objrelax", 1, Domain.unbounded())
         distance_term = M.variable("dist", 3, Domain.unbounded())
         
-        #Upper level var
+        #Upper-level variables
         Q = M.variable("Q", [n,n], Domain.unbounded())
         q = M.variable("q", n, Domain.unbounded())
         c = M.variable("c", Domain.unbounded())
@@ -198,39 +195,39 @@ def master(name,n,wlist,z,Qxk_list,qxk_list, vxk_vector,yklist,mu):
         crelax = M.variable("crelax", Domain.unbounded())
         K = len(vxk_vector)
         
-        #LL variables
+        #Lower-level variables
         lam = M.variable("lambda", len(b), Domain.greaterThan(0.0))
         eta = M.variable("eta", K, Domain.greaterThan(0.0))
         alpha = M.variable("alpha", Domain.greaterThan(0.0))
         beta = M.variable("beta", Domain.unbounded())
         
-        #Vars for PSD constraint
+        #Variables for PSD constraint
         PSDVar = M.variable(Domain.inPSDCone(n+1)) #the whole matrix that must be PSD in (27)
         PSDVar_main = PSDVar.slice([0,0], [n,n]) #we take the first submatrix n x n in each component of the sum in (27) i.e. 0.5*Q, 0_n, alpha*I_n
         PSDVar_vec = Var.flatten(PSDVar.slice([0,n], [n,n+1])) #we take the second submatrix n x 1 i.e. 0.5*q, \sum_r(lambda_r*A)
         PSDVar_offset = PSDVar.slice([n,n], [n+1,n+1])   #we take the third submatrix 1 x 1 i.e. \beta, alpha*1
                 
-        #Objective
+        #Objective function definition:
         deg0term_obj = Expr.mul(c,np.ones(p))
         deg1term_obj = Expr.mul(wlist, q)
         deg2term_obj = Expr.mul(0.5,Expr.mul(wlist_square_flattened, Var.flatten(Q)))
         prediction_term =  Expr.add(deg2term_obj,Expr.add(deg1term_obj,deg0term_obj)) #predicted z (p points)
-        M.constraint( Expr.vstack(obj, Expr.sub(prediction_term, z)), Domain.inQCone() ) #see below -- vstack put obj "above" (z-zpredicted) 
-        
+
         deg0term_objrelax = Expr.mul(crelax,np.ones(p))
         deg1term_objrelax = Expr.mul(wlist, qrelax)
         deg2term_objrelax = Expr.mul(0.5,Expr.mul(wlist_square_flattened, Var.flatten(Qrelax)))
-        prediction_term_objrelax =  Expr.add(deg2term_objrelax,Expr.add(deg1term_objrelax,deg0term_objrelax)) #predicted z (p points)
-        M.constraint( Expr.vstack(objrelax, Expr.sub(prediction_term_objrelax, z)), Domain.inQCone() ) #see below -- vstack put obj "above" (z-zpredicted) 
+        prediction_term_objrelax =  Expr.add(deg2term_objrelax,Expr.add(deg1term_objrelax,deg0term_objrelax)) 
         
+        #constraints we need to define the objective function
+        M.constraint( Expr.vstack(obj, Expr.sub(prediction_term, z)), Domain.inQCone() ) #vstack put obj "above" (z-zpredicted) 
+        M.constraint( Expr.vstack(objrelax, Expr.sub(prediction_term_objrelax, z)), Domain.inQCone() )
+        M.constraint( Expr.vstack(1.0,Expr.vstack(distance_term.index(0), Expr.sub(Var.flatten(Q), Var.flatten(Qrelax)))), Domain.inRotatedQCone() ) 
+        M.constraint( Expr.vstack(1.0,Expr.vstack(distance_term.index(1), Expr.sub(q, qrelax))), Domain.inRotatedQCone() ) 
+        M.constraint( Expr.vstack(1.0,Expr.vstack(distance_term.index(2), Expr.sub(c, crelax))), Domain.inRotatedQCone() ) 
         
-        M.constraint( Expr.vstack(1.0,Expr.vstack(distance_term.index(0), Expr.sub(Var.flatten(Q), Var.flatten(Qrelax)))), Domain.inRotatedQCone() ) #see below -- vstack put obj "above" (z-zpredicted) 
-        M.constraint( Expr.vstack(1.0,Expr.vstack(distance_term.index(1), Expr.sub(q, qrelax))), Domain.inRotatedQCone() ) #see below -- vstack put obj "above" (z-zpredicted) 
-        M.constraint( Expr.vstack(1.0,Expr.vstack(distance_term.index(2), Expr.sub(c, crelax))), Domain.inRotatedQCone() ) #see below -- vstack put obj "above" (z-zpredicted) 
-        
-        
+                    #objective function
         M.objective(ObjectiveSense.Minimize, Expr.add(Expr.add(obj,objrelax),Expr.mul(mu,Expr.sum(distance_term)) ))
-        
+
         #Symmetry constraint for Q
         M.constraint( Expr.sub(Q, Q.transpose()),  Domain.equalsTo(0,n,n) ) #Q-Q^T = 0
        
@@ -240,7 +237,6 @@ def master(name,n,wlist,z,Qxk_list,qxk_list, vxk_vector,yklist,mu):
         #Constraints to define the several parts of the PSD matrix
         if K>=1:
             M.constraint(Expr.add(Expr.dot(eta,vxk_vector),Expr.sub(c,LL_obj_expr)),Domain.greaterThan(0.0))
-        
             combiliMat = np.zeros((n,n))
             combiliVect = np.zeros(n)
             for i in range(K):
@@ -251,8 +247,6 @@ def master(name,n,wlist,z,Qxk_list,qxk_list, vxk_vector,yklist,mu):
             M.constraint( Expr.sub(Expr.add(beta, alpha), PSDVar_offset),  Domain.equalsTo(0) )
         else:
             M.constraint(Expr.sub(c,LL_obj_expr),Domain.greaterThan(0.0))
-        
-            #Constraints to define the several parts of the PSD matrix
             M.constraint(Expr.sub(Expr.add(Expr.mul(0.5,Q), Expr.mul(alpha,np.eye(n))), PSDVar_main),  Domain.equalsTo(0,n,n) )  
             M.constraint( Expr.sub(Expr.add(Expr.mul(0.5,q), Expr.mul(lam,0.5*A)), PSDVar_vec),  Domain.equalsTo(0,n) )
             M.constraint( Expr.sub(Expr.add(beta, alpha), PSDVar_offset),  Domain.equalsTo(0) )
@@ -268,7 +262,6 @@ def master(name,n,wlist,z,Qxk_list,qxk_list, vxk_vector,yklist,mu):
         M.acceptedSolutionStatus(AccSolutionStatus.Anything)
         M.writeTask("App1.ptf")                # Save problem in readable format
         M.solve()
-
         
         test = 0
         Qsol = Q.level().reshape(n,n)
