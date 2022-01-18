@@ -87,12 +87,12 @@ def main_app2(name_dimacs,name,r=10,timelimit=18000):
             if feasible:
                 t1 = time.time()
                 tl = 10+max(0,timelimit-(t1-t0))
-                Qres = Q2+np.diag(diagonalQ2x*x)
-                bres = q2 + (M.T)@x
+                Qres = Q2+np.diag(diagonalQ2x*xres)
+                bres = q2 + (M.T)@xres
                 y,valres = solve_subproblem_App2(n,Qres,bres,zres,tl)
                 LLtime2 =time.time() - t1
-               
-                if valres>-1E-6:
+
+                if valres>=-1e-6:
                     eps_r = eps_r/r
                     ub = min(ub,zres+xres@(0.5*Q1)@xres + q1@xres)
                 else:
@@ -130,6 +130,7 @@ def solve_subproblem_App2(n,Q,b,z,tl):
     return y.X, m.objVal
 
 def ubd_problem(n,Q1,q1,Q2,q2,M,diagonalQ2x,yubd,eps_r):
+    print(eps_r)
     model = gp.Model("relax problem")
     xvar = model.addMVar(n,lb=0,ub=1,name='x')
     zvar = model.addMVar(1,name='z',lb=-GRB.INFINITY,ub=GRB.INFINITY)
