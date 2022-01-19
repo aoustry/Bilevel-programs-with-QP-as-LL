@@ -172,7 +172,7 @@ def restriction(name,n,wlist,z):
 def master(name,n,wlist,z,Qxk_list,qxk_list, vxk_vector,yklist,mu):
     "Solve the master problem"
     p = len(z)
-    wlist_square_flattened = np.array([(w.reshape(n,1).dot(w.reshape(1,n))).reshape(n**2) for w in wlist]
+    wlist_square_flattened = np.array([(w.reshape(n,1).dot(w.reshape(1,n))).reshape(n**2) for w in wlist])
     
     #Definition of the LL polytope : [0,1]^n box
     A = np.concatenate([np.eye(n),-np.eye(n)])

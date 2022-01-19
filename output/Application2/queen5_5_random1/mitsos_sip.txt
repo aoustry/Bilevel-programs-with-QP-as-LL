@@ -1,6 +1,6 @@
 Finished before time limit.
 Obj: 0.38004958400751754
-SolTime: 37.92576885223389
+SolTime: 46.15957474708557
 It. number: 51
 
 Upper level solution: [1.48746016e-01 1.11662492e-11 2.01774877e-01 9.29730520e-12
