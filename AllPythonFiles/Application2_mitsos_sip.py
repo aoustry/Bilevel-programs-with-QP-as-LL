@@ -130,7 +130,7 @@ def solve_subproblem_App2(n,Q,b,z,tl):
     return y.X, m.objVal
 
 def ubd_problem(n,Q1,q1,Q2,q2,M,diagonalQ2x,yubd,eps_r):
-    print(eps_r)
+    #print(eps_r)
     model = gp.Model("relax problem")
     xvar = model.addMVar(n,lb=0,ub=1,name='x')
     zvar = model.addMVar(1,name='z',lb=-GRB.INFINITY,ub=GRB.INFINITY)
