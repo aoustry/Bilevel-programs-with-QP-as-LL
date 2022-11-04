@@ -2,7 +2,7 @@
 
 Implementation of the algorithms presented in: 
 
-M. Cerulli(1), A. Oustry(1,2), C. D'Ambrosio(1), L. Liberti(1). Convergent algorithms for a class of convex semi-infinite programs, Submitted, 2021.
+M. Cerulli(1), A. Oustry(1,2), C. D'Ambrosio(1), L. Liberti(1). Convergent algorithms for a class of convex semi-infinite programs, SIAM Journal on Optimization, 2022.
 
 # Affiliations
 (1) LIX CNRS, Ecole polytechnique, Institute Polytechnique de Paris, 91120 Palaiseau, France
